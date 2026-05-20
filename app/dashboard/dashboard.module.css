@@ -1,0 +1,640 @@
+/* =============================================
+   Window - Fullscreen Container
+   ============================================= */
+
+.window {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-light);
+  color: var(--color-text-primary);
+  overflow: hidden;
+}
+
+/* =============================================
+   OS Header (48px)
+   ============================================= */
+
+.osHeader {
+  height: 48px;
+  background: var(--color-bg-light);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.actionsLeft,
+.actionsRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionsRight {
+  margin-left: auto;
+}
+
+.iconButton {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  border-radius: 6px;
+  position: relative;
+  transition: background var(--transition-fast);
+  font-size: 0;
+}
+
+.iconButton:hover {
+  background: rgba(47, 46, 48, 0.08);
+}
+
+.iconButton:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+.iconButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.notificationDot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--color-primary);
+  border: 2px solid var(--color-white);
+  border-radius: 50%;
+}
+
+/* Tabs Container */
+.tabsContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 100px;
+  justify-content: flex-start;
+  margin-left: 32px;
+}
+
+.storeInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.storeAvatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.storeText {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.storeName {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.statusDot {
+  width: 12px;
+  height: 12px;
+  background: #1fad68;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0;
+  align-items: center;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  position: relative;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.tab:hover {
+  background: rgba(47, 46, 48, 0.08);
+}
+
+.tab:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+.tabActive {
+  background: rgba(47, 46, 48, 0.12);
+  color: var(--color-text-primary);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  border: 2px solid var(--color-white);
+  margin-left: 2px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Account Button */
+.accountButton {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  transition: background var(--transition-fast);
+}
+
+.accountButton:hover {
+  background: rgba(47, 46, 48, 0.08);
+}
+
+.accountButton:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+.accountAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* =============================================
+   Page Header (56px)
+   ============================================= */
+
+.pageHeader {
+  height: 56px;
+  background: var(--color-bg-light);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 8px 8px;
+  flex-shrink: 0;
+}
+
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  transition: background var(--transition-fast);
+}
+
+.menuButton:hover {
+  background: rgba(47, 46, 48, 0.08);
+}
+
+.menuButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* =============================================
+   Content Area
+   ============================================= */
+
+.contentPage {
+  flex: 1;
+  background: var(--color-bg-light);
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.contentPage::-webkit-scrollbar {
+  width: 8px;
+}
+
+.contentPage::-webkit-scrollbar-track {
+  background: var(--color-bg-light);
+}
+
+.contentPage::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.contentPage::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-dark);
+}
+
+/* =============================================
+   Greeting
+   ============================================= */
+
+.greeting {
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.greeting h1 {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0;
+  letter-spacing: -0.5px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.greetingName {
+  color: var(--color-primary);
+}
+
+/* =============================================
+   Filter Bar
+   ============================================= */
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.filterGroup {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  white-space: nowrap;
+  box-shadow: none;
+  will-change: transform, box-shadow;
+}
+
+.filterButton:hover {
+  background: rgba(47, 46, 48, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+.filterButton:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+.filterButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.performanceButton {
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.performanceButton:hover {
+  background: rgba(47, 46, 48, 0.08);
+}
+
+.performanceButton:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+/* =============================================
+   Sections
+   ============================================= */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* =============================================
+   Cards Grid
+   ============================================= */
+
+.cardsContainer {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: var(--color-bg-light);
+  padding: 8px;
+  border-radius: 16px;
+}
+
+.largeCard {
+  background: var(--color-white);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 200px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, box-shadow;
+}
+
+.largeCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.cardTop {
+  height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.cardContent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 155px;
+}
+
+.skeleton {
+  background: var(--color-bg-light);
+  border-radius: 8px;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.subCards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.smallCard {
+  background: var(--color-white);
+  border-radius: 8px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, box-shadow;
+}
+
+.smallCard:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* =============================================
+   Promo Section
+   ============================================= */
+
+.promoContainer {
+  display: grid;
+  grid-template-columns: 318.5px repeat(5, 1fr);
+  gap: 8px;
+  background: var(--color-bg-light);
+  padding: 8px;
+  border-radius: 16px;
+  height: 213px;
+}
+
+.promoCard {
+  background: linear-gradient(135deg, var(--color-bg-light) 0%, rgba(47, 46, 48, 0.04) 100%);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, box-shadow;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.promoCard:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.promoIcon {
+  width: 20px;
+  height: 20px;
+  background: var(--color-primary);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-white);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.promoIcon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.promoContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.promoTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin: 0 0 4px;
+  line-height: 1.4;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.promoDesc {
+  font-size: 16px;
+  color: var(--color-text-primary);
+  margin: 0 0 8px;
+  line-height: 1.25;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.promoSubtext {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin: 0;
+  opacity: 0.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.promoButton {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  box-shadow: none;
+  will-change: transform, box-shadow;
+}
+
+.promoButton:hover {
+  background: rgba(47, 46, 48, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.promoButton:focus-visible {
+  outline: var(--focus-outline);
+  outline-offset: var(--focus-offset);
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+
+@media (max-width: 1400px) {
+  .tabsContainer {
+    gap: 48px;
+  }
+
+  .promoContainer {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+@media (max-width: 1024px) {
+  .cardsContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .subCards {
+    grid-template-columns: 1fr;
+  }
+
+  .promoContainer {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .contentPage {
+    padding: 16px;
+  }
+
+  .filterBar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .performanceButton {
+    width: 100%;
+  }
+
+  .tabsContainer {
+    gap: 24px;
+    margin-left: 0;
+  }
+}

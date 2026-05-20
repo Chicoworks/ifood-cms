@@ -1,0 +1,248 @@
+.page {
+  position: relative;
+  min-height: 100vh;
+  background: var(--bg-primary);
+  padding: 12px;
+}
+
+/* ---- WebGL backdrop ---- */
+
+.backdrop {
+  position: absolute;
+  inset: 12px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  z-index: 0;
+}
+
+.backdropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0.4) 100%);
+  pointer-events: none;
+}
+
+/* ---- Content layer ---- */
+
+.content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: calc(100vh - 24px);
+  padding: 40px;
+}
+
+/* ---- Quote ---- */
+
+.quoteArea {
+  max-width: 480px;
+}
+
+.quoteText {
+  font-size: 38px;
+  font-weight: var(--weight-bold);
+  color: #FFFFFF;
+  line-height: 1.1;
+  letter-spacing: -1.2px;
+  margin: 0 0 24px;
+  quotes: none;
+}
+
+.quoteAttribution {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quoteAuthor {
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.quoteRole {
+  font-size: var(--text-sm);
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: var(--weight-regular);
+}
+
+/* ---- Login card ---- */
+
+.loginCard {
+  width: 380px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--shadow-lg);
+  align-self: center;
+}
+
+.brandArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.brandIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brandName {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+/* ---- Form ---- */
+
+.formArea {
+  width: 100%;
+  animation: formEnter 400ms ease-out both;
+  animation-delay: 150ms;
+}
+
+.formTitle {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-primary);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
+}
+
+.formSubtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: 0 0 32px;
+  line-height: var(--leading-normal);
+}
+
+.googleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  background: var(--brand);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  color: var(--text-inverse);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  box-shadow: var(--shadow-sm);
+}
+
+.googleBtn:hover {
+  background: var(--brand-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.googleBtn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.googleBtn:active {
+  background: var(--brand-pressed);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.googleIcon {
+  display: flex;
+  align-items: center;
+}
+
+.btnIcon {
+  flex-shrink: 0;
+}
+
+/* ---- Error ---- */
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  border: 1px solid var(--brand-muted);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin: 20px 0 0;
+  line-height: 1.4;
+}
+
+.cardFooter {
+  margin-top: 28px;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* ---- Animations ---- */
+
+@keyframes formEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 900px) {
+  .page {
+    padding: 8px;
+  }
+
+  .backdrop {
+    inset: 8px;
+    border-radius: var(--radius-xl);
+  }
+
+  .content {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 32px;
+    padding: 24px 20px;
+    min-height: calc(100vh - 16px);
+  }
+
+  .quoteArea {
+    max-width: 100%;
+  }
+
+  .quoteText {
+    font-size: 28px;
+  }
+
+  .loginCard {
+    width: 100%;
+    max-width: 380px;
+    align-self: center;
+  }
+}
