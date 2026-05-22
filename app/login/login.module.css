@@ -1,16 +1,23 @@
+@property --neon-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .page {
   position: relative;
   min-height: 100vh;
-  background: var(--bg-primary);
-  padding: 12px;
+  background: #1b1c1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---- WebGL backdrop ---- */
 
 .backdrop {
   position: absolute;
-  inset: 12px;
-  border-radius: var(--radius-xl);
+  inset: 0;
   overflow: hidden;
   z-index: 0;
 }
@@ -19,8 +26,9 @@
   position: absolute;
   inset: 0;
   z-index: 1;
-  background:
-    linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.15) 50%, rgba(0, 0, 0, 0.4) 100%);
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   pointer-events: none;
 }
 
@@ -30,133 +38,187 @@
   position: relative;
   z-index: 2;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  min-height: calc(100vh - 24px);
-  padding: 40px;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  width: 100%;
 }
 
-/* ---- Quote ---- */
+/* ---- Quote (hidden in this design) ---- */
 
 .quoteArea {
-  max-width: 480px;
+  display: none;
 }
 
-.quoteText {
-  font-size: 38px;
-  font-weight: var(--weight-bold);
-  color: #FFFFFF;
-  line-height: 1.1;
-  letter-spacing: -1.2px;
-  margin: 0 0 24px;
-  quotes: none;
-}
-
-.quoteAttribution {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.quoteAuthor {
-  font-size: var(--text-base);
-  font-weight: var(--weight-semibold);
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.quoteRole {
-  font-size: var(--text-sm);
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: var(--weight-regular);
-}
-
-/* ---- Login card ---- */
+/* ---- Centered form ---- */
 
 .loginCard {
-  width: 380px;
+  width: 402px;
   flex-shrink: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: 36px 32px 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: var(--shadow-lg);
-  align-self: center;
+  gap: 16px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
-.brandArea {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 32px;
-}
+/* ---- Avatar ring ---- */
 
-.brandIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  background: var(--brand);
+.avatarRingWrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.brandName {
-  font-size: var(--text-md);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-  letter-spacing: -0.3px;
+/* Neon glow layer — sits behind the ring, hidden by default */
+.neonGlow {
+  position: absolute;
+  inset: -3px;
+  border-radius: 40px;
+  background: conic-gradient(
+    from var(--neon-angle, 0deg),
+    #EB0033 0deg,
+    #FF1744 60deg,
+    #FF5252 120deg,
+    transparent 180deg,
+    transparent 300deg,
+    #EB0033 360deg
+  );
+  filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.6s ease;
 }
 
-/* ---- Form ---- */
+/* Sharp border layer on top of the glow, hidden by default */
+.neonBorder {
+  position: absolute;
+  inset: -2px;
+  border-radius: 40px;
+  background: conic-gradient(
+    from var(--neon-angle, 0deg),
+    #EB0033 0deg,
+    #FF1744 60deg,
+    #FF5252 120deg,
+    transparent 180deg,
+    transparent 300deg,
+    #EB0033 360deg
+  );
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+/* Show neon only when hovering the Google button */
+.loginCard:has(.googleBtn:hover) .neonGlow {
+  opacity: 0.7;
+}
+
+.loginCard:has(.googleBtn:hover) .neonBorder {
+  opacity: 0.9;
+}
+
+.avatarRing {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 2px solid rgba(159, 160, 170, 0.15);
+  border-radius: 38px;
+  box-sizing: content-box;
+  background: #1b1c1e;
+  z-index: 1;
+}
+
+.avatarCircle {
+  width: 100px;
+  height: 100px;
+  border-radius: 30px;
+  background: #EB0033;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.avatarIcon {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.userAvatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 30px;
+  object-fit: cover;
+}
+
+/* ---- Title area ---- */
 
 .formArea {
   width: 100%;
-  animation: formEnter 400ms ease-out both;
-  animation-delay: 150ms;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
 }
 
 .formTitle {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
-  color: var(--text-primary);
-  line-height: var(--leading-tight);
-  letter-spacing: -0.5px;
-  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: var(--weight-medium);
+  color: #FFFFFF;
+  line-height: 24px;
+  letter-spacing: 0;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-body);
 }
 
 .formSubtitle {
-  font-size: var(--text-base);
-  color: var(--text-secondary);
-  margin: 0 0 32px;
-  line-height: var(--leading-normal);
+  font-size: 14px;
+  font-weight: var(--weight-regular);
+  color: #A3A3A3;
+  margin: 0;
+  line-height: 24px;
+  text-align: center;
+  font-family: var(--font-body);
+}
+
+/* ---- Google button ---- */
+
+.btnArea {
+  padding: 12px;
+  width: 100%;
 }
 
 .googleBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 14px 24px;
-  background: var(--brand);
+  padding: 12px 24px 12px 20px;
+  background: #141414;
   border: none;
-  border-radius: var(--radius-md);
-  font-size: 15px;
+  border-radius: 12px;
+  font-size: 16px;
   font-weight: var(--weight-medium);
-  color: var(--text-inverse);
+  color: #FFFFFF;
   cursor: pointer;
   transition: all var(--transition-fast);
-  font-family: inherit;
-  box-shadow: var(--shadow-sm);
+  font-family: var(--font-body);
+  min-height: 48px;
 }
 
 .googleBtn:hover {
-  background: var(--brand-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  background: #141414;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .googleBtn:focus-visible {
@@ -165,9 +227,26 @@
 }
 
 .googleBtn:active {
-  background: var(--brand-pressed);
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
+  background: #0a0a0a;
+}
+
+.switchAccount {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  text-align: center;
+}
+
+.switchAccount:hover {
+  color: #FFFFFF;
 }
 
 .googleIcon {
@@ -176,6 +255,8 @@
 }
 
 .btnIcon {
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
@@ -183,66 +264,35 @@
 
 .error {
   font-size: var(--text-sm);
-  color: var(--color-error);
-  background: var(--color-error-bg);
-  border: 1px solid var(--brand-muted);
-  border-radius: var(--radius-md);
+  color: #FF4747;
+  background: rgba(255, 71, 71, 0.1);
+  border: 1px solid rgba(255, 71, 71, 0.3);
+  border-radius: 12px;
   padding: 12px 16px;
-  margin: 20px 0 0;
+  margin: 8px 12px 0;
   line-height: 1.4;
+  text-align: center;
+  width: calc(100% - 24px);
 }
 
 .cardFooter {
-  margin-top: 28px;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
+  display: none;
 }
 
-/* ---- Animations ---- */
+/* ---- GSAP initial state (prevents flash) ---- */
 
-@keyframes formEnter {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.avatarRingWrap,
+.formTitle,
+.formSubtitle,
+.btnArea {
+  visibility: hidden;
 }
 
 /* ---- Responsive ---- */
 
-@media (max-width: 900px) {
-  .page {
-    padding: 8px;
-  }
-
-  .backdrop {
-    inset: 8px;
-    border-radius: var(--radius-xl);
-  }
-
-  .content {
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 32px;
-    padding: 24px 20px;
-    min-height: calc(100vh - 16px);
-  }
-
-  .quoteArea {
-    max-width: 100%;
-  }
-
-  .quoteText {
-    font-size: 28px;
-  }
-
+@media (max-width: 480px) {
   .loginCard {
     width: 100%;
-    max-width: 380px;
-    align-self: center;
+    padding: 0 20px;
   }
 }

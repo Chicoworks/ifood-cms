@@ -61,6 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, loading, pathname, router]);
 
   const signOut = async () => {
+    // Salvar dados do último usuário para exibir na tela de login
+    if (user) {
+      localStorage.setItem('ifood_last_user', JSON.stringify({
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+        avatar: user.user_metadata?.avatar_url || '',
+        email: user.email || '',
+      }));
+    }
     await supabase.auth.signOut();
     router.replace('/login');
   };

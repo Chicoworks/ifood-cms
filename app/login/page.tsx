@@ -1,34 +1,121 @@
 'use client';
 
-import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
 import { supabase } from '@/lib/supabase';
-import { WebGLShader } from '@/components/WebGLShader/WebGLShader';
+import { DottedSurface } from '@/components/DottedSurface/DottedSurface';
 import styles from './login.module.css';
 
-const quotes = [
-  { text: 'Design is not just what it looks like and feels like. Design is how it works.', author: 'Steve Jobs', role: 'Co-founder, Apple' },
-  { text: 'Good design is obvious. Great design is transparent.', author: 'Joe Sparano', role: 'Designer' },
-  { text: 'The details are not the details. They make the design.', author: 'Charles Eames', role: 'Designer & Architect' },
-  { text: 'Simplicity is the ultimate sophistication.', author: 'Leonardo da Vinci', role: 'Polymath' },
-  { text: 'People ignore design that ignores people.', author: 'Frank Chimero', role: 'Designer & Writer' },
-  { text: 'Design is intelligence made visible.', author: 'Alina Wheeler', role: 'Brand Consultant' },
-  { text: 'Every great design begins with an even better story.', author: 'Lorinda Mamo', role: 'Designer' },
-  { text: 'White space is to be regarded as an active element, not a passive background.', author: 'Jan Tschichold', role: 'Typographer' },
-  { text: 'Make it simple, but significant.', author: 'Don Draper', role: 'Mad Men' },
-  { text: 'A user interface is like a joke. If you have to explain it, it\'s not that good.', author: 'Martin LeBlanc', role: 'CEO, Iconfinder' },
-  { text: 'Design creates culture. Culture shapes values. Values determine the future.', author: 'Robert L. Peters', role: 'Designer' },
-  { text: 'Less, but better.', author: 'Dieter Rams', role: 'Industrial Designer, Braun' },
-  { text: 'Content precedes design. Design in the absence of content is not design, it\'s decoration.', author: 'Jeffrey Zeldman', role: 'Web Designer' },
-  { text: 'If you think good design is expensive, you should look at the cost of bad design.', author: 'Ralf Speth', role: 'CEO, Jaguar Land Rover' },
-  { text: 'The best error message is the one that never shows up.', author: 'Thomas Fuchs', role: 'Software Engineer' },
-];
+interface LastUser {
+  name: string;
+  avatar: string;
+  email: string;
+}
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const domainError = searchParams.get('error') === 'domain';
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [lastUser, setLastUser] = useState<LastUser | null>(null);
 
-  const [quote] = useState(() => quotes[Math.floor(Math.random() * quotes.length)]);
+  // Ler dados do último usuário do localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('ifood_last_user');
+      if (stored) {
+        setLastUser(JSON.parse(stored));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!cardRef.current) return;
+
+    const card = cardRef.current;
+    const ringWrap = card.querySelector(`.${styles.avatarRingWrap}`) as HTMLElement;
+    const neonGlow = card.querySelector(`.${styles.neonGlow}`) as HTMLElement;
+    const neonBorder = card.querySelector(`.${styles.neonBorder}`) as HTMLElement;
+    const title = card.querySelector(`.${styles.formTitle}`) as HTMLElement;
+    const subtitle = card.querySelector(`.${styles.formSubtitle}`) as HTMLElement;
+    const btnArea = card.querySelector(`.${styles.btnArea}`) as HTMLElement;
+    const error = card.querySelector(`.${styles.error}`) as HTMLElement;
+
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+    // 1. Avatar ring wrap — scale up from 0
+    tl.fromTo(
+      ringWrap,
+      { scale: 0, opacity: 0, visibility: 'hidden' },
+      { scale: 1, opacity: 1, visibility: 'visible', duration: 0.8, ease: 'back.out(1.4)' },
+    );
+
+    // 2. Title — fade in + slide up
+    tl.fromTo(
+      title,
+      { y: 20, opacity: 0, visibility: 'hidden' },
+      { y: 0, opacity: 1, visibility: 'visible', duration: 0.5 },
+      '-=0.3',
+    );
+
+    // 3. Subtitle — fade in + slide up (staggered)
+    tl.fromTo(
+      subtitle,
+      { y: 15, opacity: 0, visibility: 'hidden' },
+      { y: 0, opacity: 1, visibility: 'visible', duration: 0.5 },
+      '-=0.25',
+    );
+
+    // 4. Button — slide up with elastic ease
+    tl.fromTo(
+      btnArea,
+      { y: 30, opacity: 0, visibility: 'hidden' },
+      { y: 0, opacity: 1, visibility: 'visible', duration: 0.6, ease: 'back.out(1.2)' },
+      '-=0.2',
+    );
+
+    // 5. Error (if present) — fade in
+    if (error) {
+      tl.fromTo(
+        error,
+        { y: 10, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.4 },
+        '-=0.1',
+      );
+    }
+
+    // 6. Subtle floating animation on the ring wrap (loops forever)
+    gsap.to(ringWrap, {
+      y: -6,
+      duration: 2.5,
+      ease: 'sine.inOut',
+      yoyo: true,
+      repeat: -1,
+      delay: tl.duration(),
+    });
+
+    // 7. Neon rotation — animate the CSS custom property
+    const neonProxy = { angle: 0 };
+    gsap.to(neonProxy, {
+      angle: 360,
+      duration: 3,
+      ease: 'none',
+      repeat: -1,
+      onUpdate: () => {
+        const val = `${neonProxy.angle}deg`;
+        neonGlow.style.setProperty('--neon-angle', val);
+        neonBorder.style.setProperty('--neon-angle', val);
+      },
+    });
+
+    return () => {
+      tl.kill();
+      gsap.killTweensOf(ringWrap);
+      gsap.killTweensOf(neonProxy);
+    };
+  }, [domainError, lastUser]);
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -37,7 +124,7 @@ export default function LoginPage() {
         queryParams: {
           hd: 'ifood.com.br',
           access_type: 'offline',
-          prompt: 'consent',
+          prompt: lastUser ? 'none' : 'consent',
         },
         scopes: 'https://www.googleapis.com/auth/analytics.readonly',
         redirectTo: `${window.location.origin}/auth/callback`,
@@ -45,51 +132,98 @@ export default function LoginPage() {
     });
   };
 
+  const firstName = lastUser?.name?.split(' ')[0] || '';
+
   return (
     <div className={styles.page}>
-      {/* Full-screen WebGL background with rounded corners */}
+      {/* Full-screen dotted surface background */}
       <div className={styles.backdrop}>
-        <WebGLShader />
-        <div className={styles.backdropOverlay} />
+        <DottedSurface />
       </div>
 
-      {/* Content layer — sits on top of the shader */}
+      {/* Content layer */}
       <div className={styles.content}>
-        {/* Quote — bottom left */}
-        <div className={styles.quoteArea}>
-          <blockquote className={styles.quoteText}>
-            {quote.text}
-          </blockquote>
-          <div className={styles.quoteAttribution}>
-            <span className={styles.quoteAuthor}>{quote.author}</span>
-            <span className={styles.quoteRole}>{quote.role}</span>
+        <div className={styles.loginCard} ref={cardRef}>
+          {/* Avatar ring with neon glow */}
+          <div className={styles.avatarRingWrap}>
+            <div className={styles.neonGlow} />
+            <div className={styles.neonBorder} />
+            <div className={styles.avatarRing}>
+              {lastUser?.avatar ? (
+                <img
+                  src={lastUser.avatar}
+                  alt={lastUser.name}
+                  className={styles.userAvatar}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className={styles.avatarCircle}>
+                  <img
+                    src="/ifood-icon.png"
+                    alt="iFood"
+                    className={styles.avatarIcon}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Login card — floating on the right */}
-        <div className={styles.loginCard}>
-          {/* Form */}
+          {/* Title */}
           <div className={styles.formArea}>
-            <h1 className={styles.formTitle}>Acesse o iFood Pages</h1>
+            <h1 className={styles.formTitle}>
+              {lastUser ? `Olá, ${firstName}` : 'iFood Portal'}
+            </h1>
             <p className={styles.formSubtitle}>
-              Faça login para acessar o painel de gerenciamento
+              {lastUser
+                ? lastUser.email
+                : 'Faça login para acessar o painel de gerenciamento'}
             </p>
+          </div>
 
-            {/* Google Sign-In */}
+          {/* Google Sign-In button */}
+          <div className={styles.btnArea}>
             <button className={styles.googleBtn} onClick={handleGoogleLogin}>
-              <img src="/ifood-icon.png" alt="" width={22} height={22} className={styles.btnIcon} />
-              Entrar com Google
+              {lastUser ? (
+                <>
+                  <svg width="24" height="24" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                  </svg>
+                  Continuar como {firstName}
+                </>
+              ) : (
+                <>
+                  <svg width="24" height="24" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                  </svg>
+                  Entrar com o Google
+                </>
+              )}
             </button>
 
-            {/* Error */}
-            {domainError && (
-              <p className={styles.error}>Acesso permitido apenas para emails @ifood.com.br</p>
+            {/* Link para usar outra conta */}
+            {lastUser && (
+              <button
+                className={styles.switchAccount}
+                onClick={() => {
+                  localStorage.removeItem('ifood_last_user');
+                  setLastUser(null);
+                }}
+              >
+                Usar outra conta
+              </button>
             )}
           </div>
 
-          <div className={styles.cardFooter}>
-            iFood &copy; {new Date().getFullYear()}
-          </div>
+          {/* Error */}
+          {domainError && (
+            <p className={styles.error}>Acesso permitido apenas para emails @ifood.com.br</p>
+          )}
         </div>
       </div>
     </div>
