@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
+import { Icon } from '@/components/Icon/Icon';
 import type { Experiment, Page } from '@/types/database';
 import styles from './experiments.module.css';
 
@@ -24,6 +25,13 @@ const statusClass: Record<string, string> = {
   completed: styles.statusCompleted,
 };
 
+const statusColors: Record<string, string> = {
+  draft: '#9fa0aa',
+  running: '#4cd8b9',
+  paused: '#ebb400',
+  completed: '#787878',
+};
+
 export default function ExperimentsPage() {
   const router = useRouter();
   const { user, signOut } = useAuth();
@@ -32,6 +40,7 @@ export default function ExperimentsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
 
   // Form
   const [formName, setFormName] = useState('');
@@ -142,9 +151,7 @@ export default function ExperimentsPage() {
             <p>{experiments.length} experimento{experiments.length !== 1 ? 's' : ''}</p>
           </div>
           <button className={styles.btnPrimary} onClick={() => { resetForm(); setShowModal(true); }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+            <Icon name="plus-default" size={16} />
             Novo experimento
           </button>
         </div>
@@ -161,11 +168,40 @@ export default function ExperimentsPage() {
             {experiments.map((exp) => (
               <div key={exp.id} className={styles.experimentCard}>
                 <div className={styles.experimentInfo}>
-                  <span className={styles.experimentName}>{exp.name}</span>
+                  <div className={styles.experimentTopRow}>
+                    <span className={styles.experimentName}>{exp.name}</span>
+                    <div className={styles.statusWrapper}>
+                      <button
+                        className={`${styles.statusBadge} ${statusClass[exp.status]}`}
+                        onClick={() => setOpenStatusMenu(openStatusMenu === exp.id ? null : exp.id)}
+                      >
+                        {statusLabels[exp.status]}
+                        <span className={styles.statusChevron}>
+                          <Icon name="chevron-down" size={12} />
+                        </span>
+                      </button>
+                      {openStatusMenu === exp.id && (
+                        <>
+                          <div className={styles.statusMenuBackdrop} onClick={() => setOpenStatusMenu(null)} />
+                          <div className={styles.statusMenu}>
+                            {['draft', 'running', 'paused', 'completed'].map((s) => (
+                              <button
+                                key={s}
+                                className={`${styles.statusMenuItem} ${exp.status === s ? styles.statusMenuItemActive : ''}`}
+                                onClick={() => { handleStatusChange(exp.id, s); setOpenStatusMenu(null); }}
+                              >
+                                <span className={styles.statusMenuDot} style={{ color: statusColors[s] }}>
+                                  <svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5" /></svg>
+                                </span>
+                                {statusLabels[s]}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                   <div className={styles.experimentMeta}>
-                    <span className={`${styles.statusBadge} ${statusClass[exp.status]}`}>
-                      {statusLabels[exp.status]}
-                    </span>
                     <span>{exp.page_name}</span>
                     <span>{exp.type === 'block' ? 'Bloco' : 'Página'}</span>
                     <span>{exp.traffic_percentage}% / {100 - exp.traffic_percentage}%</span>

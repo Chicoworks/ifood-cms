@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import type { Page, PageContent, Block, BlockType } from '@/types/database';
 import { BlockEditor } from './components/BlockEditor';
 import { BlockSelector } from './components/BlockSelector';
+import { Icon } from '@/components/Icon/Icon';
 import styles from './editor.module.css';
 
 const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL || 'http://localhost:3000';
@@ -29,6 +30,12 @@ export default function EditorPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  // AI adaptation config
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiSaving, setAiSaving] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -93,6 +100,8 @@ export default function EditorPage() {
       }
 
       setPage(pageData);
+      setAiEnabled(pageData.ai_adaptation_enabled ?? false);
+      setAiPrompt(pageData.ai_adaptation_prompt ?? '');
 
       let versionData = await supabase
         .from('page_versions')
@@ -270,6 +279,26 @@ export default function EditorPage() {
     setDragOverIndex(null);
   };
 
+  // Save AI adaptation config
+  const saveAiConfig = async () => {
+    setAiSaving(true);
+    // @ts-ignore
+    const { error } = await supabase
+      .from('pages')
+      .update({
+        ai_adaptation_enabled: aiEnabled,
+        ai_adaptation_prompt: aiPrompt || null,
+      })
+      .eq('id', pageId);
+
+    if (error) {
+      showToast('Erro ao salvar config IA', 'error');
+    } else {
+      showToast('Config IA salva', 'success');
+    }
+    setAiSaving(false);
+  };
+
   if (loading) {
     return <div className={styles.loading}>Carregando editor...</div>;
   }
@@ -284,9 +313,7 @@ export default function EditorPage() {
       <header className={styles.topBar}>
         <div className={styles.topBarLeft}>
           <button className={styles.backBtn} onClick={() => router.push('/')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
+            <Icon name="chevron-left" size={20} />
           </button>
           <div>
             <h1 className={styles.pageTitle}>{page.name}</h1>
@@ -325,18 +352,80 @@ export default function EditorPage() {
         <div className={`${styles.sidePanel} ${panelCollapsed ? styles.sidePanelCollapsed : ''}`}>
           <div className={styles.panelHeader}>
             <button className={styles.panelToggle} onClick={() => setPanelCollapsed(!panelCollapsed)} title={panelCollapsed ? 'Expandir' : 'Recolher'}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                {panelCollapsed
-                  ? <polyline points="9 18 15 12 9 6" />
-                  : <polyline points="15 18 9 12 15 6" />
-                }
-              </svg>
+              <Icon name={panelCollapsed ? 'chevron-left' : 'chevron-right'} size={16} />
             </button>
             {!panelCollapsed && <span className={styles.panelTitle}>Blocos</span>}
           </div>
 
           {!panelCollapsed && (
             <div className={styles.panelContent}>
+              {/* AI Adaptation Config */}
+              <div className={styles.aiSection}>
+                <button
+                  className={styles.aiSectionToggle}
+                  onClick={() => setShowAiPanel(!showAiPanel)}
+                >
+                  <Icon name="bot" size={16} />
+                  <span>Personalização com IA</span>
+                  <span className={`${styles.aiStatusDot} ${aiEnabled ? styles.aiStatusActive : ''}`} />
+                  <span style={{ marginLeft: 'auto', transform: showAiPanel ? 'rotate(180deg)' : 'none', transition: 'transform 150ms', display: 'inline-flex' }}>
+                    <Icon name="chevron-down" size={12} />
+                  </span>
+                </button>
+
+                {showAiPanel && (
+                  <div className={styles.aiPanelBody}>
+                    <label className={styles.aiToggleRow}>
+                      <span className={styles.aiToggleLabel}>Adaptar conteúdo por UTM</span>
+                      <button
+                        className={`${styles.aiToggleSwitch} ${aiEnabled ? styles.aiToggleSwitchOn : ''}`}
+                        onClick={() => setAiEnabled(!aiEnabled)}
+                        role="switch"
+                        aria-checked={aiEnabled}
+                      >
+                        <span className={styles.aiToggleKnob} />
+                      </button>
+                    </label>
+
+                    {aiEnabled && (
+                      <>
+                        <div className={styles.aiPromptGroup}>
+                          <label className={styles.aiPromptLabel}>Instruções para a IA (opcional)</label>
+                          <textarea
+                            className={styles.aiPromptInput}
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            placeholder="Ex: Adapte o tom para ser mais informal quando a campanha for de redes sociais. Destaque benefícios financeiros para campanhas de Google Ads."
+                            rows={4}
+                          />
+                          <span className={styles.aiPromptHint}>
+                            A IA usará os UTM params (source, campaign, medium) para adaptar textos automaticamente.
+                          </span>
+                        </div>
+
+                        <button
+                          className={styles.aiSaveBtn}
+                          onClick={saveAiConfig}
+                          disabled={aiSaving}
+                        >
+                          {aiSaving ? 'Salvando...' : 'Salvar configuração'}
+                        </button>
+                      </>
+                    )}
+
+                    {!aiEnabled && (
+                      <button
+                        className={styles.aiSaveBtn}
+                        onClick={saveAiConfig}
+                        disabled={aiSaving}
+                      >
+                        {aiSaving ? 'Salvando...' : 'Salvar'}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {blocks.length === 0 ? (
                 <div className={styles.emptyEditor}>
                   <p>Nenhum bloco</p>

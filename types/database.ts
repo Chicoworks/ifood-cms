@@ -14,8 +14,20 @@ export interface Page {
   name: string;
   slug: string;
   status: PageStatus;
+  vertical_id: string | null;
+  thumbnail_url: string | null;
+  ai_adaptation_enabled: boolean;
+  ai_adaptation_prompt: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Vertical {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+  created_at: string;
 }
 
 export interface PageVersion {
@@ -289,12 +301,23 @@ export interface Database {
     Tables: {
       pages: {
         Row: Page;
-        Insert: Omit<Page, 'id' | 'created_at' | 'updated_at'> & {
+        Insert: Omit<Page, 'id' | 'created_at' | 'updated_at' | 'vertical_id' | 'ai_adaptation_enabled' | 'ai_adaptation_prompt'> & {
           id?: string;
+          vertical_id?: string | null;
+          ai_adaptation_enabled?: boolean;
+          ai_adaptation_prompt?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Omit<Page, 'id' | 'created_at'>>;
+      };
+      verticals: {
+        Row: Vertical;
+        Insert: Omit<Vertical, 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<Vertical, 'id' | 'created_at'>>;
       };
       page_versions: {
         Row: PageVersion;

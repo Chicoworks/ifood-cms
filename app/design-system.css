@@ -293,7 +293,7 @@ select:focus-visible {
 
 html[data-theme="dark"] {
   /* Surfaces */
-  --bg-primary: #0A0A0A;
+  --bg-primary: #121314;
   --bg-secondary: #141414;
   --bg-tertiary: #1F1F1F;
   --bg-hover: rgba(255, 255, 255, 0.08);

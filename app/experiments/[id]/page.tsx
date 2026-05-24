@@ -1,6 +1,7 @@
+// @ts-nocheck
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Experiment, ExperimentVariant, Block, PageContent } from '@/types/database';
@@ -12,11 +13,15 @@ import { ResultsEditor } from '../../editor/[id]/components/editors/ResultsEdito
 import { FAQEditor } from '../../editor/[id]/components/editors/FAQEditor';
 import { NavbarEditor } from '../../editor/[id]/components/editors/NavbarEditor';
 import { FooterEditor } from '../../editor/[id]/components/editors/FooterEditor';
+import { Icon } from '@/components/Icon/Icon';
+import { BrandMark } from '@/components/Brand/BrandMark';
 import styles from './experiment-detail.module.css';
+
+const LANDING_URL = 'http://localhost:3001';
 
 const typeLabels: Record<string, string> = {
   navbar: 'Navbar',
-  hero: 'Hero',
+  hero: 'Hero banner',
   vision: 'Social Proof',
   growth: 'Growth',
   integrated: 'Features',
@@ -25,11 +30,36 @@ const typeLabels: Record<string, string> = {
   footer: 'Footer',
 };
 
+const typeIcons: Record<string, string> = {
+  navbar: 'burger-menu-three',
+  hero: 'photo-image-default',
+  vision: 'star',
+  growth: 'rocket-ship',
+  integrated: 'plugin-addon-puzzle',
+  results: 'text-quotes-paragraph',
+  faq: 'file-02-question-mark',
+  footer: 'window-dock-bottom',
+};
+
 const statusLabels: Record<string, string> = {
   draft: 'Rascunho',
   running: 'Rodando',
   paused: 'Pausado',
   completed: 'Concluído',
+};
+
+const statusStyles: Record<string, string> = {
+  draft: 'statusDraft',
+  running: 'statusRunning',
+  paused: 'statusPaused',
+  completed: 'statusCompleted',
+};
+
+const statusColors: Record<string, string> = {
+  draft: '#9fa0aa',
+  running: '#4cd8b9',
+  paused: '#ebb400',
+  completed: '#787878',
 };
 
 export default function ExperimentDetailPage() {
@@ -40,24 +70,35 @@ export default function ExperimentDetailPage() {
   const [experiment, setExperiment] = useState<Experiment | null>(null);
   const [variants, setVariants] = useState<ExperimentVariant[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [pageSlug, setPageSlug] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Variant B editing state
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [variantBlockData, setVariantBlockData] = useState<any>(null);
+  const [trafficPct, setTrafficPct] = useState(50);
+  const [savingTraffic, setSavingTraffic] = useState(false);
+
+  // Modals
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showUndoModal, setShowUndoModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Editable name
+  const [editName, setEditName] = useState('');
+  const nameTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // Status dropdown
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  // Load experiment, variants, and page blocks
   useEffect(() => {
     async function load() {
-      // Fetch experiment
-      // @ts-ignore
       const { data: exp } = await supabase
         .from('experiments')
         .select('*')
@@ -66,9 +107,17 @@ export default function ExperimentDetailPage() {
 
       if (!exp) { router.push('/experiments'); return; }
       setExperiment(exp);
+      setEditName(exp.name);
+      setTrafficPct(exp.traffic_percentage);
 
-      // Fetch variants
-      // @ts-ignore
+      // Fetch page slug for preview
+      const { data: pageData } = await supabase
+        .from('pages')
+        .select('slug')
+        .eq('id', exp.page_id)
+        .single();
+      if (pageData) setPageSlug(pageData.slug);
+
       const { data: vars } = await supabase
         .from('experiment_variants')
         .select('*')
@@ -77,12 +126,9 @@ export default function ExperimentDetailPage() {
 
       setVariants((vars as any) || []);
 
-      // Fetch page blocks (from latest draft or published version)
-      // @ts-ignore
       let versionData = await supabase
         .from('page_versions')
         .select('content')
-        // @ts-ignore
         .eq('page_id', exp.page_id)
         .eq('version_type', 'draft')
         .order('created_at', { ascending: false })
@@ -90,11 +136,9 @@ export default function ExperimentDetailPage() {
         .single();
 
       if (!versionData.data) {
-        // @ts-ignore
         const pubVersionData = await supabase
           .from('page_versions')
           .select('content')
-          // @ts-ignore
           .eq('page_id', exp.page_id)
           .eq('version_type', 'published')
           .order('created_at', { ascending: false })
@@ -106,14 +150,12 @@ export default function ExperimentDetailPage() {
       const content = (versionData.data as any)?.content as PageContent | null;
       setBlocks(content?.blocks ?? []);
 
-      // If variant B already has a target block, load it
       const variantB = ((vars as any) || []).find((v: any) => !v.is_control);
       if (variantB?.target_block_id) {
         setSelectedBlockId(variantB.target_block_id);
         if (variantB.block_data) {
           setVariantBlockData(variantB.block_data);
         } else {
-          // Initialize with original block data
           const originalBlock = (content?.blocks ?? []).find(b => b.id === variantB.target_block_id);
           if (originalBlock) setVariantBlockData(JSON.parse(JSON.stringify(originalBlock.data)));
         }
@@ -125,7 +167,6 @@ export default function ExperimentDetailPage() {
     load();
   }, [experimentId, router]);
 
-  // When user selects a block to test
   const handleSelectBlock = (blockId: string) => {
     setSelectedBlockId(blockId);
     const block = blocks.find(b => b.id === blockId);
@@ -134,14 +175,12 @@ export default function ExperimentDetailPage() {
     }
   };
 
-  // Save variant B configuration
   const handleSave = async () => {
     const variantB = variants.find(v => !v.is_control);
     if (!variantB || !selectedBlockId || !variantBlockData) return;
 
     setSaving(true);
 
-    // @ts-ignore
     const { error } = await (supabase as any)
       .from('experiment_variants')
       .update({
@@ -159,18 +198,128 @@ export default function ExperimentDetailPage() {
     setSaving(false);
   };
 
-  // Render the appropriate editor for the selected block type
-  const renderVariantEditor = () => {
-    if (!selectedBlockId || !variantBlockData) return null;
+  const trafficTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const originalBlock = blocks.find(b => b.id === selectedBlockId);
-    if (!originalBlock) return null;
+  const handleTrafficChange = (value: number) => {
+    setTrafficPct(value);
 
-    // Create a fake block object for the editor
-    const fakeBlock = { ...originalBlock, data: variantBlockData } as Block;
-    const onUpdate = (updated: Block) => setVariantBlockData(updated.data);
+    // Debounce: save only after user stops dragging for 500ms
+    if (trafficTimerRef.current) clearTimeout(trafficTimerRef.current);
+    trafficTimerRef.current = setTimeout(async () => {
+      setSavingTraffic(true);
+      await (supabase as any)
+        .from('experiments')
+        .update({ traffic_percentage: value })
+        .eq('id', experimentId);
 
-    switch (originalBlock.type) {
+      const controlVariant = variants.find(v => v.is_control);
+      const varB = variants.find(v => !v.is_control);
+      if (controlVariant) {
+        await (supabase as any)
+          .from('experiment_variants')
+          .update({ weight: value })
+          .eq('id', controlVariant.id);
+      }
+      if (varB) {
+        await (supabase as any)
+          .from('experiment_variants')
+          .update({ weight: 100 - value })
+          .eq('id', varB.id);
+      }
+
+      setExperiment(prev => prev ? { ...prev, traffic_percentage: value } : prev);
+      setSavingTraffic(false);
+    }, 500);
+  };
+
+  // Reset variant B to original block data
+  const handleUndo = () => {
+    if (!selectedBlockId) return;
+    const block = blocks.find(b => b.id === selectedBlockId);
+    if (block) {
+      setVariantBlockData(JSON.parse(JSON.stringify(block.data)));
+      showToast('Variante restaurada ao original', 'success');
+    }
+    setShowUndoModal(false);
+  };
+
+  // Delete experiment + variants and redirect
+  const handleDelete = async () => {
+    setDeleting(true);
+
+    // Delete variants first (FK constraint)
+    await (supabase as any)
+      .from('experiment_variants')
+      .delete()
+      .eq('experiment_id', experimentId);
+
+    // Delete experiment
+    const { error } = await (supabase as any)
+      .from('experiments')
+      .delete()
+      .eq('id', experimentId);
+
+    if (error) {
+      showToast('Erro ao excluir experimento', 'error');
+      setDeleting(false);
+      setShowDeleteModal(false);
+      return;
+    }
+
+    router.push('/experiments');
+  };
+
+  // Rename experiment (debounced)
+  const handleNameChange = (value: string) => {
+    setEditName(value);
+    if (nameTimeout.current) clearTimeout(nameTimeout.current);
+    nameTimeout.current = setTimeout(async () => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      const { error } = await (supabase as any)
+        .from('experiments')
+        .update({ name: trimmed })
+        .eq('id', experimentId);
+      if (!error) {
+        setExperiment(prev => prev ? { ...prev, name: trimmed } : prev);
+      }
+    }, 600);
+  };
+
+  // Change experiment status
+  const handleStatusChange = async (newStatus: string) => {
+    const updates: any = { status: newStatus };
+    if (newStatus === 'running') updates.started_at = new Date().toISOString();
+    if (newStatus === 'completed') updates.ended_at = new Date().toISOString();
+
+    const { error } = await (supabase as any)
+      .from('experiments')
+      .update(updates)
+      .eq('id', experimentId);
+
+    if (error) {
+      showToast('Erro ao alterar status', 'error');
+    } else {
+      setExperiment(prev => prev ? { ...prev, status: newStatus } : prev);
+      showToast(`Status alterado para ${statusLabels[newStatus]}`, 'success');
+    }
+    setShowStatusMenu(false);
+  };
+
+  // Open preview with variant B applied
+  const handlePreview = () => {
+    if (!pageSlug) {
+      showToast('Página não encontrada', 'error');
+      return;
+    }
+    // Pass experiment ID + variant param so the landing can apply the variant
+    const url = `${LANDING_URL}/p/${pageSlug}?experiment=${experimentId}&variant=b`;
+    window.open(url, '_blank');
+  };
+
+  const renderEditor = (block: Block, data: any, onUpdate: (b: Block) => void) => {
+    const fakeBlock = { ...block, data } as Block;
+    switch (block.type) {
       case 'hero': return <HeroEditor block={fakeBlock as any} onUpdate={onUpdate as any} />;
       case 'vision': return <VisionEditor block={fakeBlock as any} onUpdate={onUpdate as any} />;
       case 'growth': return <GrowthEditor block={fakeBlock as any} onUpdate={onUpdate as any} />;
@@ -179,7 +328,7 @@ export default function ExperimentDetailPage() {
       case 'faq': return <FAQEditor block={fakeBlock as any} onUpdate={onUpdate as any} />;
       case 'navbar': return <NavbarEditor block={fakeBlock as any} onUpdate={onUpdate as any} />;
       case 'footer': return <FooterEditor block={fakeBlock as any} onUpdate={onUpdate as any} />;
-      default: return <p>Editor não disponível</p>;
+      default: return <p>Editor indisponível</p>;
     }
   };
 
@@ -189,126 +338,240 @@ export default function ExperimentDetailPage() {
 
   if (!experiment) return null;
 
-  const variantB = variants.find(v => !v.is_control);
-  const isConfigured = variantB?.target_block_id && variantB?.block_data;
+  const selectedBlock = selectedBlockId ? blocks.find(b => b.id === selectedBlockId) : null;
 
   return (
     <div className={styles.page}>
-      {/* Top bar */}
-      <header className={styles.topBar}>
-        <div className={styles.topBarLeft}>
-          <button className={styles.backBtn} onClick={() => router.push('/experiments')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <div>
-            <h1 className={styles.title}>{experiment.name}</h1>
-            <span className={styles.subtitle}>
-              {statusLabels[experiment.status]} &middot; {experiment.type === 'block' ? 'Teste de bloco' : 'Teste de página'} &middot; {experiment.traffic_percentage}% / {100 - experiment.traffic_percentage}%
-            </span>
-          </div>
-        </div>
-        <div className={styles.topBarRight}>
-          <button className={styles.btnSave} onClick={handleSave} disabled={saving || !selectedBlockId}>
-            {saving ? 'Salvando...' : 'Salvar variante'}
-          </button>
-        </div>
-      </header>
+      <div className={styles.wrapper}>
+        {/* ====== SIDEBAR ====== */}
+        <div className={styles.sidebar}>
+          {/* Header */}
+          <div className={styles.sidebarHeader}>
+            <div className={styles.sidebarTopRow}>
+              <BrandMark size={20} />
+              <div className={styles.topRowSpacer} />
+              <button className={styles.topBtn} onClick={handlePreview} title="Preview">
+                <Icon name="eye-on" size={18} />
+              </button>
+              <button className={styles.topBtn} onClick={() => router.push('/experiments')} title="Fechar">
+                <Icon name="close-x" size={18} />
+              </button>
+            </div>
 
-      {/* Content */}
-      <div className={styles.content}>
-        {experiment.type === 'block' ? (
-          <div className={styles.columns}>
-            {/* Left: Block selector */}
-            <div className={styles.leftColumn}>
-              <h2 className={styles.sectionTitle}>1. Selecione o bloco para testar</h2>
-              <div className={styles.blockList}>
-                {blocks.map((block) => (
-                  <button
-                    key={block.id}
-                    className={`${styles.blockItem} ${selectedBlockId === block.id ? styles.blockItemActive : ''}`}
-                    onClick={() => handleSelectBlock(block.id)}
-                  >
-                    <span className={styles.blockIcon}>{block.type.charAt(0).toUpperCase()}</span>
-                    <div className={styles.blockInfo}>
-                      <span className={styles.blockName}>{typeLabels[block.type] || block.type}</span>
-                      <span className={styles.blockId}>{block.id}</span>
+            <div className={styles.aboutRow}>
+              <input
+                className={styles.experimentTitle}
+                value={editName}
+                onChange={(e) => handleNameChange(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                spellCheck={false}
+              />
+              <div className={styles.statusWrapper}>
+                <button
+                  className={`${styles.statusChip} ${styles[statusStyles[experiment.status]]}`}
+                  onClick={() => setShowStatusMenu(!showStatusMenu)}
+                >
+                  <span className={styles.statusChipDot}>
+                    <svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5" /></svg>
+                  </span>
+                  <span className={styles.statusChipLabel}>{statusLabels[experiment.status]}</span>
+                  <span className={styles.statusChipChevron}>
+                    <Icon name="chevron-down" size={12} />
+                  </span>
+                </button>
+                {showStatusMenu && (
+                  <>
+                    <div className={styles.statusMenuBackdrop} onClick={() => setShowStatusMenu(false)} />
+                    <div className={styles.statusMenu}>
+                      {['draft', 'running', 'paused', 'completed'].map((s) => (
+                        <button
+                          key={s}
+                          className={`${styles.statusMenuItem} ${experiment.status === s ? styles.statusMenuItemActive : ''}`}
+                          onClick={() => handleStatusChange(s)}
+                        >
+                          <span className={styles.statusMenuDot} style={{ color: statusColors[s] }}>
+                            <svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5" /></svg>
+                          </span>
+                          {statusLabels[s]}
+                        </button>
+                      ))}
                     </div>
-                    {selectedBlockId === block.id && (
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EB0033" strokeWidth="3">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Right: Variant editor */}
-            <div className={styles.rightColumn}>
-              {selectedBlockId ? (
-                <>
-                  <div className={styles.editorHeader}>
-                    <h2 className={styles.sectionTitle}>2. Edite a Variante B</h2>
-                    <span className={styles.editorHint}>Altere os campos que deseja testar</span>
-                  </div>
-
-                  <div className={styles.editorCompare}>
-                    {/* Original */}
-                    <div className={styles.editorPanel}>
-                      <div className={styles.panelLabel}>
-                        <span className={styles.panelBadgeA}>A</span>
-                        Controle (original)
-                      </div>
-                      <div className={styles.panelBody}>
-                        <div className={styles.panelDisabled}>
-                          {(() => {
-                            const block = blocks.find(b => b.id === selectedBlockId);
-                            if (!block) return null;
-                            const fakeBlock = block as Block;
-                            const noop = () => {};
-                            switch (block.type) {
-                              case 'hero': return <HeroEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'vision': return <VisionEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'growth': return <GrowthEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'integrated': return <IntegratedEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'results': return <ResultsEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'faq': return <FAQEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'navbar': return <NavbarEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              case 'footer': return <FooterEditor block={fakeBlock as any} onUpdate={noop as any} />;
-                              default: return null;
-                            }
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Variant */}
-                    <div className={styles.editorPanel}>
-                      <div className={styles.panelLabel}>
-                        <span className={styles.panelBadgeB}>B</span>
-                        Variante
-                      </div>
-                      <div className={styles.panelBody}>
-                        {renderVariantEditor()}
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className={styles.placeholder}>
-                  <p>Selecione um bloco na lista ao lado para configurar a variante B</p>
-                </div>
-              )}
+            <div className={styles.trafficCard}>
+              <div className={styles.trafficHeader}>
+                <span className={styles.trafficLabel}>Distribuição de tráfego</span>
+                {savingTraffic && <span className={styles.trafficSaving}>Salvando...</span>}
+              </div>
+              <div className={styles.trafficBarContainer}>
+                <input
+                  type="range"
+                  min="10"
+                  max="90"
+                  value={trafficPct}
+                  onChange={(e) => handleTrafficChange(parseInt(e.target.value))}
+                  className={styles.trafficRange}
+                  style={{
+                    background: `linear-gradient(to right, #eb0033 0%, #eb0033 ${((trafficPct - 10) / 80) * 100}%, rgba(120,120,120,0.2) ${((trafficPct - 10) / 80) * 100}%, rgba(120,120,120,0.2) 100%)`,
+                  }}
+                />
+                <span className={styles.trafficText}>
+                  {trafficPct}% controle &nbsp;|&nbsp; {100 - trafficPct}% variante
+                </span>
+              </div>
             </div>
           </div>
-        ) : (
-          <div className={styles.placeholder}>
-            <p>Para testes de página, configure a página alternativa na tabela de variantes</p>
+
+          {/* Block list */}
+          <div className={styles.blockListSection}>
+            <span className={styles.blockListLabel}>Selecione um bloco</span>
+            <div className={styles.blockList}>
+              {blocks.map((block) => (
+                <button
+                  key={block.id}
+                  className={`${styles.blockItem} ${selectedBlockId === block.id ? styles.blockItemActive : ''}`}
+                  onClick={() => handleSelectBlock(block.id)}
+                >
+                  <span className={styles.blockIcon}>
+                    <Icon name={typeIcons[block.type] || 'grid-dashboard-bento'} size={20} />
+                  </span>
+                  <div className={styles.blockInfo}>
+                    <span className={styles.blockName}>{typeLabels[block.type] || block.type}</span>
+                    <span className={styles.blockId}>{block.id}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* Footer — floating with blur */}
+          <div className={styles.sidebarFooter}>
+            <button
+              className={styles.saveBtn}
+              onClick={handleSave}
+              disabled={saving || !selectedBlockId}
+            >
+              {saving ? 'Salvando...' : 'Salvar variante'}
+            </button>
+            <div className={styles.footerSecondaryRow}>
+              <button
+                className={styles.undoBtn}
+                onClick={() => setShowUndoModal(true)}
+                disabled={!selectedBlockId || !variantBlockData}
+              >
+                Desfazer
+              </button>
+              <button
+                className={styles.deleteBtn}
+                onClick={() => setShowDeleteModal(true)}
+              >
+                Excluir teste
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ====== MAIN AREA ====== */}
+        <div className={styles.mainArea}>
+          {selectedBlock ? (
+            <>
+              {/* Panel A — Controle */}
+              <div className={styles.editorPanel}>
+                <div className={styles.panelLabel}>
+                  <span className={styles.panelBadgeA}>A</span>
+                  Controle (original)
+                </div>
+                <div className={styles.panelBody}>
+                  <div className={styles.panelDisabled}>
+                    {renderEditor(selectedBlock, selectedBlock.data, () => {})}
+                  </div>
+                </div>
+              </div>
+
+              {/* Panel B — Variante */}
+              <div className={styles.editorPanel}>
+                <div className={styles.panelLabel}>
+                  <span className={styles.panelBadgeB}>B</span>
+                  Variante
+                </div>
+                <div className={styles.panelBody}>
+                  {variantBlockData && renderEditor(
+                    selectedBlock,
+                    variantBlockData,
+                    (updated: Block) => setVariantBlockData(updated.data)
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.editorPanel}>
+                <span className={styles.placeholderLabel}>Controle</span>
+              </div>
+              <div className={styles.editorPanel}>
+                <span className={styles.placeholderLabel}>Variante</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Undo confirmation modal */}
+      {showUndoModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowUndoModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={`${styles.modalIcon} ${styles.modalIconUndo}`}>
+              <Icon name="chevron-left" size={22} />
+            </div>
+            <h2 className={styles.modalTitle}>Desfazer alterações?</h2>
+            <p className={styles.modalDesc}>
+              A variante B será restaurada ao conteúdo original do bloco. As edições não salvas serão perdidas.
+            </p>
+            <div className={styles.modalActions}>
+              <button className={styles.modalCancel} onClick={() => setShowUndoModal(false)}>
+                Cancelar
+              </button>
+              <button className={styles.modalConfirmUndo} onClick={handleUndo}>
+                Restaurar original
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && (
+        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <div className={`${styles.modalIcon} ${styles.modalIconDanger}`}>
+              <Icon name="chevron-down" size={22} />
+            </div>
+            <h2 className={styles.modalTitle}>Excluir experimento?</h2>
+            <p className={styles.modalDesc}>
+              O experimento <strong>{experiment?.name}</strong> e todas as suas variantes serão excluídos permanentemente. Essa ação não pode ser desfeita.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                className={styles.modalCancel}
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+              >
+                Cancelar
+              </button>
+              <button
+                className={styles.modalConfirmDanger}
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
