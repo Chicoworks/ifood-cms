@@ -10,22 +10,50 @@ interface IconProps {
 
 const cache = new Map<string, string>();
 
+/** Only allow alphanumeric, hyphens, underscores — prevents path traversal & injection */
+const VALID_ICON_NAME = /^[a-zA-Z0-9_-]+$/;
+
+/** Minimal SVG sanitization: must start with <svg and not contain scripts */
+function isSafeSvg(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('<svg')) return false;
+  // Block script tags, event handlers, and data URIs
+  const dangerous = /<script/i.test(trimmed)
+    || /on\w+\s*=/i.test(trimmed)
+    || /javascript:/i.test(trimmed)
+    || /data:\s*text\/html/i.test(trimmed);
+  return !dangerous;
+}
+
 export function Icon({ name, size = 20, className }: IconProps) {
   const [svg, setSvg] = useState<string>(cache.get(name) || '');
 
   useEffect(() => {
+    // Validate icon name to prevent path traversal
+    if (!VALID_ICON_NAME.test(name)) {
+      return;
+    }
+
     if (cache.has(name)) {
       setSvg(cache.get(name)!);
       return;
     }
 
     fetch(`/icons/${name}.svg`)
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) throw new Error('Not found');
+        return r.text();
+      })
       .then(text => {
-        // Replace width/height with the desired size
+        // Validate SVG content before injecting
+        if (!isSafeSvg(text)) {
+          console.warn(`Icon "${name}" failed SVG safety check`);
+          return;
+        }
+
         const processed = text
-          .replace(/width="24"/, `width="${size}"`)
-          .replace(/height="24"/, `height="${size}"`);
+          .replace(/width="\d+"/, `width="${size}"`)
+          .replace(/height="\d+"/, `height="${size}"`);
         cache.set(name, processed);
         setSvg(processed);
       })

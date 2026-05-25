@@ -1,0 +1,87 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 150ms ease-out;
+}
+
+.modal {
+  background: #1b1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+  animation: scaleIn 200ms ease-out;
+}
+
+.icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.iconDefault {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f5f5f5;
+}
+
+.iconDanger {
+  background: rgba(235, 0, 51, 0.12);
+  color: #eb0033;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0 0 8px;
+  line-height: 26px;
+}
+
+.description {
+  font-size: 14px;
+  color: #9fa0aa;
+  line-height: 20px;
+  margin: 0 0 24px;
+}
+
+.body {
+  margin-bottom: 24px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

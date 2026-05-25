@@ -8,29 +8,14 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import { Icon } from '@/components/Icon/Icon';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
+import { Toast } from '@/components/ui/toast';
+import { useToast } from '@/hooks/useToast';
+import type { StatusType } from '@/components/ui/status-badge';
 import type { Experiment, Page } from '@/types/database';
 import styles from './experiments.module.css';
-
-const statusLabels: Record<string, string> = {
-  draft: 'Rascunho',
-  running: 'Rodando',
-  paused: 'Pausado',
-  completed: 'Concluído',
-};
-
-const statusClass: Record<string, string> = {
-  draft: styles.statusDraft,
-  running: styles.statusRunning,
-  paused: styles.statusPaused,
-  completed: styles.statusCompleted,
-};
-
-const statusColors: Record<string, string> = {
-  draft: '#9fa0aa',
-  running: '#4cd8b9',
-  paused: '#ebb400',
-  completed: '#787878',
-};
 
 export default function ExperimentsPage() {
   const router = useRouter();
@@ -39,8 +24,7 @@ export default function ExperimentsPage() {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
 
   // Form
   const [formName, setFormName] = useState('');
@@ -50,11 +34,6 @@ export default function ExperimentsPage() {
   const [formTraffic, setFormTraffic] = useState(50);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
-
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
 
   const fetchData = useCallback(async () => {
     const [{ data: exps }, { data: pgs }] = await Promise.all([
@@ -170,36 +149,11 @@ export default function ExperimentsPage() {
                 <div className={styles.experimentInfo}>
                   <div className={styles.experimentTopRow}>
                     <span className={styles.experimentName}>{exp.name}</span>
-                    <div className={styles.statusWrapper}>
-                      <button
-                        className={`${styles.statusBadge} ${statusClass[exp.status]}`}
-                        onClick={() => setOpenStatusMenu(openStatusMenu === exp.id ? null : exp.id)}
-                      >
-                        {statusLabels[exp.status]}
-                        <span className={styles.statusChevron}>
-                          <Icon name="chevron-down" size={12} />
-                        </span>
-                      </button>
-                      {openStatusMenu === exp.id && (
-                        <>
-                          <div className={styles.statusMenuBackdrop} onClick={() => setOpenStatusMenu(null)} />
-                          <div className={styles.statusMenu}>
-                            {['draft', 'running', 'paused', 'completed'].map((s) => (
-                              <button
-                                key={s}
-                                className={`${styles.statusMenuItem} ${exp.status === s ? styles.statusMenuItemActive : ''}`}
-                                onClick={() => { handleStatusChange(exp.id, s); setOpenStatusMenu(null); }}
-                              >
-                                <span className={styles.statusMenuDot} style={{ color: statusColors[s] }}>
-                                  <svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5" /></svg>
-                                </span>
-                                {statusLabels[s]}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
+                    <StatusBadge
+                      status={exp.status as StatusType}
+                      size="sm"
+                      onStatusChange={(s) => handleStatusChange(exp.id, s)}
+                    />
                   </div>
                   <div className={styles.experimentMeta}>
                     <span>{exp.page_name}</span>
@@ -249,63 +203,58 @@ export default function ExperimentsPage() {
       </main>
 
       {/* Create modal */}
-      {showModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>Novo experimento</h2>
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title="Novo experimento"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleCreate} disabled={formLoading}>
+              {formLoading ? 'Criando...' : 'Criar experimento'}
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Nome do experimento</label>
+          <input className={styles.formInput} value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Ex: Hero CTA vermelho vs azul" />
+        </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Nome do experimento</label>
-              <input className={styles.formInput} value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Ex: Hero CTA vermelho vs azul" />
-            </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Descrição (opcional)</label>
+          <input className={styles.formInput} value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Objetivo do teste..." />
+        </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Descrição (opcional)</label>
-              <input className={styles.formInput} value={formDesc} onChange={(e) => setFormDesc(e.target.value)} placeholder="Objetivo do teste..." />
-            </div>
-
-            <div className={styles.formRow}>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Página</label>
-                <select className={styles.formSelect} value={formPageId} onChange={(e) => setFormPageId(e.target.value)}>
-                  <option value="">Selecione...</option>
-                  {pages.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Tipo</label>
-                <select className={styles.formSelect} value={formType} onChange={(e) => setFormType(e.target.value as any)}>
-                  <option value="block">Bloco (A/B de um componente)</option>
-                  <option value="page">Página (A/B da página inteira)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Distribuição de tráfego: {formTraffic}% Controle / {100 - formTraffic}% Variante</label>
-              <input type="range" min="10" max="90" value={formTraffic} onChange={(e) => setFormTraffic(parseInt(e.target.value))} style={{ width: '100%' }} />
-            </div>
-
-            {formError && <p className={styles.formError}>{formError}</p>}
-
-            <div className={styles.modalActions}>
-              <button className={styles.btnCancel} onClick={() => setShowModal(false)}>Cancelar</button>
-              <button className={styles.btnSubmit} onClick={handleCreate} disabled={formLoading}>
-                {formLoading ? 'Criando...' : 'Criar experimento'}
-              </button>
-            </div>
+        <div className={styles.formRow}>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Página</label>
+            <select className={styles.formSelect} value={formPageId} onChange={(e) => setFormPageId(e.target.value)}>
+              <option value="">Selecione...</option>
+              {pages.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>Tipo</label>
+            <select className={styles.formSelect} value={formType} onChange={(e) => setFormType(e.target.value as any)}>
+              <option value="block">Bloco (A/B de um componente)</option>
+              <option value="page">Página (A/B da página inteira)</option>
+            </select>
           </div>
         </div>
-      )}
+
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Distribuição de tráfego: {formTraffic}% Controle / {100 - formTraffic}% Variante</label>
+          <input type="range" min="10" max="90" value={formTraffic} onChange={(e) => setFormTraffic(parseInt(e.target.value))} style={{ width: '100%' }} />
+        </div>
+
+        {formError && <p className={styles.formError}>{formError}</p>}
+      </Modal>
 
       {/* Toast */}
-      {toast && (
-        <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-          {toast.message}
-        </div>
-      )}
+      <Toast toast={toast} />
     </div>
   );
 }
