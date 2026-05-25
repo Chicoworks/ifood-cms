@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Experiment, ExperimentVariant, Block, PageContent } from '@/types/database';
@@ -15,6 +15,12 @@ import { NavbarEditor } from '../../editor/[id]/components/editors/NavbarEditor'
 import { FooterEditor } from '../../editor/[id]/components/editors/FooterEditor';
 import { Icon } from '@/components/Icon/Icon';
 import { BrandMark } from '@/components/Brand/BrandMark';
+import { StatusBadge } from '@/components/ui/status-badge';
+import type { StatusType } from '@/components/ui/status-badge';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
+import { Toast } from '@/components/ui/toast';
+import { useToast } from '@/hooks/useToast';
 import styles from './experiment-detail.module.css';
 
 const LANDING_URL = 'http://localhost:3001';
@@ -41,26 +47,6 @@ const typeIcons: Record<string, string> = {
   footer: 'window-dock-bottom',
 };
 
-const statusLabels: Record<string, string> = {
-  draft: 'Rascunho',
-  running: 'Rodando',
-  paused: 'Pausado',
-  completed: 'Concluído',
-};
-
-const statusStyles: Record<string, string> = {
-  draft: 'statusDraft',
-  running: 'statusRunning',
-  paused: 'statusPaused',
-  completed: 'statusCompleted',
-};
-
-const statusColors: Record<string, string> = {
-  draft: '#9fa0aa',
-  running: '#4cd8b9',
-  paused: '#ebb400',
-  completed: '#787878',
-};
 
 export default function ExperimentDetailPage() {
   const params = useParams();
@@ -73,7 +59,7 @@ export default function ExperimentDetailPage() {
   const [pageSlug, setPageSlug] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { toast, showToast } = useToast();
 
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [variantBlockData, setVariantBlockData] = useState<any>(null);
@@ -89,13 +75,6 @@ export default function ExperimentDetailPage() {
   const [editName, setEditName] = useState('');
   const nameTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Status dropdown
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
-
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
 
   useEffect(() => {
     async function load() {
@@ -287,7 +266,7 @@ export default function ExperimentDetailPage() {
   };
 
   // Change experiment status
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: StatusType) => {
     const updates: any = { status: newStatus };
     if (newStatus === 'running') updates.started_at = new Date().toISOString();
     if (newStatus === 'completed') updates.ended_at = new Date().toISOString();
@@ -301,9 +280,9 @@ export default function ExperimentDetailPage() {
       showToast('Erro ao alterar status', 'error');
     } else {
       setExperiment(prev => prev ? { ...prev, status: newStatus } : prev);
-      showToast(`Status alterado para ${statusLabels[newStatus]}`, 'success');
+      const labels: Record<string, string> = { draft: 'Rascunho', running: 'Rodando', paused: 'Pausado', completed: 'Concluído' };
+      showToast(`Status alterado para ${labels[newStatus] || newStatus}`, 'success');
     }
-    setShowStatusMenu(false);
   };
 
   // Open preview with variant B applied
@@ -366,39 +345,11 @@ export default function ExperimentDetailPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                 spellCheck={false}
               />
-              <div className={styles.statusWrapper}>
-                <button
-                  className={`${styles.statusChip} ${styles[statusStyles[experiment.status]]}`}
-                  onClick={() => setShowStatusMenu(!showStatusMenu)}
-                >
-                  <span className={styles.statusChipDot}>
-                    <svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5" /></svg>
-                  </span>
-                  <span className={styles.statusChipLabel}>{statusLabels[experiment.status]}</span>
-                  <span className={styles.statusChipChevron}>
-                    <Icon name="chevron-down" size={12} />
-                  </span>
-                </button>
-                {showStatusMenu && (
-                  <>
-                    <div className={styles.statusMenuBackdrop} onClick={() => setShowStatusMenu(false)} />
-                    <div className={styles.statusMenu}>
-                      {['draft', 'running', 'paused', 'completed'].map((s) => (
-                        <button
-                          key={s}
-                          className={`${styles.statusMenuItem} ${experiment.status === s ? styles.statusMenuItemActive : ''}`}
-                          onClick={() => handleStatusChange(s)}
-                        >
-                          <span className={styles.statusMenuDot} style={{ color: statusColors[s] }}>
-                            <svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="5" /></svg>
-                          </span>
-                          {statusLabels[s]}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+              <StatusBadge
+                status={experiment.status as StatusType}
+                size="md"
+                onStatusChange={(s) => handleStatusChange(s)}
+              />
             </div>
 
             <div className={styles.trafficCard}>
@@ -454,7 +405,7 @@ export default function ExperimentDetailPage() {
               onClick={handleSave}
               disabled={saving || !selectedBlockId}
             >
-              {saving ? 'Salvando...' : 'Salvar variante'}
+              {saving ? 'Salvando...' : 'Salvar'}
             </button>
             <div className={styles.footerSecondaryRow}>
               <button
@@ -509,10 +460,10 @@ export default function ExperimentDetailPage() {
           ) : (
             <>
               <div className={styles.editorPanel}>
-                <span className={styles.placeholderLabel}>Controle</span>
+                <span className={styles.emptyHint}>Selecione um bloco na barra lateral para visualizar o conteúdo original</span>
               </div>
               <div className={styles.editorPanel}>
-                <span className={styles.placeholderLabel}>Variante</span>
+                <span className={styles.emptyHint}>A variante editável aparecerá aqui após selecionar um bloco</span>
               </div>
             </>
           )}
@@ -520,65 +471,38 @@ export default function ExperimentDetailPage() {
       </div>
 
       {/* Undo confirmation modal */}
-      {showUndoModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowUndoModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={`${styles.modalIcon} ${styles.modalIconUndo}`}>
-              <Icon name="chevron-left" size={22} />
-            </div>
-            <h2 className={styles.modalTitle}>Desfazer alterações?</h2>
-            <p className={styles.modalDesc}>
-              A variante B será restaurada ao conteúdo original do bloco. As edições não salvas serão perdidas.
-            </p>
-            <div className={styles.modalActions}>
-              <button className={styles.modalCancel} onClick={() => setShowUndoModal(false)}>
-                Cancelar
-              </button>
-              <button className={styles.modalConfirmUndo} onClick={handleUndo}>
-                Restaurar original
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={showUndoModal}
+        onClose={() => setShowUndoModal(false)}
+        title="Desfazer alterações?"
+        description="A variante B será restaurada ao conteúdo original do bloco. As edições não salvas serão perdidas."
+        icon={<Icon name="chevron-left" size={22} />}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowUndoModal(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleUndo}>Restaurar original</Button>
+          </>
+        }
+      />
 
       {/* Delete confirmation modal */}
-      {showDeleteModal && (
-        <div className={styles.modalOverlay} onClick={() => !deleting && setShowDeleteModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={`${styles.modalIcon} ${styles.modalIconDanger}`}>
-              <Icon name="chevron-down" size={22} />
-            </div>
-            <h2 className={styles.modalTitle}>Excluir experimento?</h2>
-            <p className={styles.modalDesc}>
-              O experimento <strong>{experiment?.name}</strong> e todas as suas variantes serão excluídos permanentemente. Essa ação não pode ser desfeita.
-            </p>
-            <div className={styles.modalActions}>
-              <button
-                className={styles.modalCancel}
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deleting}
-              >
-                Cancelar
-              </button>
-              <button
-                className={styles.modalConfirmDanger}
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? 'Excluindo...' : 'Excluir'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={showDeleteModal}
+        onClose={() => !deleting && setShowDeleteModal(false)}
+        title="Excluir experimento?"
+        description={`O experimento ${experiment?.name} e todas as suas variantes serão excluídos permanentemente. Essa ação não pode ser desfeita.`}
+        icon={<Icon name="chevron-down" size={22} />}
+        variant="danger"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={deleting}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDelete} disabled={deleting}>{deleting ? 'Excluindo...' : 'Excluir'}</Button>
+          </>
+        }
+      />
 
       {/* Toast */}
-      {toast && (
-        <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-          {toast.message}
-        </div>
-      )}
+      <Toast toast={toast} />
     </div>
   );
 }

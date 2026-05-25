@@ -1,0 +1,83 @@
+'use client';
+
+import { ReactNode } from 'react';
+import { StatusBadge } from '@/components/ui/status-badge';
+import type { StatusType } from '@/components/ui/status-badge';
+import type { Page, Vertical } from '@/types/database';
+import styles from './PageCard.module.css';
+
+export interface PageWithVertical extends Page {
+  vertical?: Vertical | null;
+}
+
+interface PageCardProps {
+  page: PageWithVertical;
+  userName: string;
+  userAvatar: string | null;
+  formatDate: (dateStr: string) => string;
+  onClick: () => void;
+  actions?: ReactNode;
+  onStatusChange?: (newStatus: StatusType) => void;
+}
+
+const PAGE_STATUSES: StatusType[] = ['draft', 'published'];
+
+export function PageCard({
+  page,
+  userName,
+  userAvatar,
+  formatDate,
+  onClick,
+  actions,
+  onStatusChange,
+}: PageCardProps) {
+  return (
+    <article
+      className={`${styles.card} ${actions ? styles.cardWithActions : ''}`}
+      onClick={onClick}
+    >
+      <div className={styles.cardInner}>
+        <div
+          className={styles.cardTop}
+          onClick={onStatusChange ? (e) => e.stopPropagation() : undefined}
+        >
+          <StatusBadge
+            status={page.status as StatusType}
+            size="sm"
+            onStatusChange={onStatusChange}
+            dropdownStatuses={onStatusChange ? PAGE_STATUSES : undefined}
+          />
+          <span className={styles.cardDate}>{formatDate(page.updated_at)}</span>
+        </div>
+
+        <div className={styles.cardBottom}>
+          <span className={styles.cardVertical}>
+            {page.vertical?.name || 'Ecossistema'}
+          </span>
+          <h3 className={styles.cardTitle}>{page.name}</h3>
+          <div className={styles.cardAuthor}>
+            {userAvatar ? (
+              <img src={userAvatar} alt="" className={styles.authorAvatar} />
+            ) : (
+              <span className={styles.authorAvatarFallback}>
+                {userName.charAt(0)}
+              </span>
+            )}
+            <span className={styles.authorName}>{userName}</span>
+          </div>
+        </div>
+      </div>
+
+      {actions && (
+        <div
+          className={styles.cardActions}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {actions}
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default PageCard;

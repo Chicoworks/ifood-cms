@@ -7,6 +7,13 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import { Icon } from '@/components/Icon/Icon';
+import { PageCard } from '@/components/PageCard/PageCard';
+import type { StatusType } from '@/components/ui/status-badge';
+import cardStyles from '@/components/PageCard/PageCard.module.css';
+import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
+import { Toast } from '@/components/ui/toast';
+import { useToast } from '@/hooks/useToast';
 import type { Page, Vertical } from '@/types/database';
 import styles from './pages.module.css';
 
@@ -19,7 +26,7 @@ export default function PagesPage() {
   const [pages, setPages] = useState<PageWithVertical[]>([]);
   const [verticals, setVerticals] = useState<Vertical[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { toast, showToast } = useToast();
 
   // Filters
   const [search, setSearch] = useState('');
@@ -39,11 +46,6 @@ export default function PagesPage() {
   const [formError, setFormError] = useState('');
   const [formLoading, setFormLoading] = useState(false);
   const [generatingThumbnail, setGeneratingThumbnail] = useState<string | null>(null);
-
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
 
   const fetchData = useCallback(async () => {
     const [{ data: pgs }, { data: verts }] = await Promise.all([
@@ -313,6 +315,12 @@ export default function PagesPage() {
     fetchData();
   };
 
+  const handleStatusChange = (page: PageWithVertical, newStatus: StatusType) => {
+    if (newStatus !== page.status) {
+      handleTogglePublish(page);
+    }
+  };
+
   // ---- Generate Thumbnail ----
   const handleGenerateThumbnail = async (page: PageWithVertical) => {
     setGeneratingThumbnail(page.id);
@@ -337,11 +345,21 @@ export default function PagesPage() {
   // ---- Formatting ----
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('pt-BR', {
-      day: '2-digit',
+      day: 'numeric',
       month: 'short',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
+
+  const getFirstName = () => {
+    const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
+    return fullName.split(' ')[0];
+  };
+
+  const userName = getFirstName();
+  const userAvatar = user?.user_metadata?.avatar_url || null;
 
   // ---- Filtering ----
   const filteredPages = pages.filter((p) => {
@@ -370,10 +388,10 @@ export default function PagesPage() {
               {filteredPages.length !== pages.length && ` · ${filteredPages.length} exibida${filteredPages.length !== 1 ? 's' : ''}`}
             </p>
           </div>
-          <button className={styles.btnPrimary} onClick={() => { resetForm(); setShowCreateModal(true); }}>
+          <Button variant="primary" onClick={() => { resetForm(); setShowCreateModal(true); }}>
             <Icon name="plus-default" size={16} />
             Nova página
-          </button>
+          </Button>
         </div>
 
         {/* Toolbar */}
@@ -423,199 +441,151 @@ export default function PagesPage() {
             <p>Tente ajustar os filtros de busca</p>
           </div>
         ) : (
-          <div className={styles.pagesList}>
+          <div className={styles.pagesGrid}>
             {filteredPages.map((page) => (
-              <div key={page.id} className={styles.pageCard}>
-                <div className={styles.pageInfo}>
-                  <span className={styles.pageName}>{page.name}</span>
-                  <div className={styles.pageMeta}>
-                    <span className={`${styles.statusBadge} ${page.status === 'published' ? styles.statusPublished : styles.statusDraft}`}>
-                      {page.status === 'published' ? 'Publicada' : 'Rascunho'}
-                    </span>
-                    <span className={styles.verticalBadge}>
-                      {page.vertical ? (
-                        <>
-                          <span className={styles.verticalDot} style={{ backgroundColor: page.vertical.color || '#888' }} />
-                          {page.vertical.name}
-                        </>
-                      ) : (
-                        'Ecossistema'
-                      )}
-                    </span>
-                  </div>
-                  <div className={styles.pageMeta}>
-                    <span className={styles.pageSlug}>/{page.slug}</span>
-                    <span className={styles.pageDate}>{formatDate(page.updated_at)}</span>
-                  </div>
-                </div>
-
-                <div className={styles.pageActions}>
-                  <button className={styles.btnSmall} onClick={() => router.push(`/editor/${page.id}`)}>
-                    Editar
-                  </button>
-                  <button className={styles.btnSmall} onClick={() => openDuplicate(page)}>
-                    Duplicar
-                  </button>
-                  {page.status === 'published' && (
-                    <button className={styles.btnSmall} onClick={() => handleGenerateThumbnail(page)}>
-                      {generatingThumbnail === page.id ? 'Gerando...' : 'Thumbnail'}
+              <PageCard
+                key={page.id}
+                page={page}
+                userName={userName}
+                userAvatar={userAvatar}
+                formatDate={formatDate}
+                onClick={() => router.push(`/editor/${page.id}`)}
+                onStatusChange={(newStatus) => handleStatusChange(page, newStatus)}
+                actions={
+                  <>
+                    <button className={cardStyles.btnAction} onClick={() => router.push(`/editor/${page.id}`)}>
+                      Editar
                     </button>
-                  )}
-                  {page.status === 'draft' ? (
-                    <button className={styles.btnPublish} onClick={() => handleTogglePublish(page)}>
-                      Publicar
+                    <button className={cardStyles.btnAction} onClick={() => openDuplicate(page)}>
+                      Duplicar
                     </button>
-                  ) : (
-                    <button className={styles.btnSmall} onClick={() => handleTogglePublish(page)}>
-                      Despublicar
+                    <button className={cardStyles.btnActionDanger} onClick={() => openDelete(page)}>
+                      Remover
                     </button>
-                  )}
-                  <button className={styles.btnSmallDanger} onClick={() => openDelete(page)}>
-                    Remover
-                  </button>
-                </div>
-              </div>
+                  </>
+                }
+              />
             ))}
           </div>
         )}
       </main>
 
       {/* Create Modal */}
-      {showCreateModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowCreateModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>Nova Página</h2>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Nome da página</label>
-              <input
-                className={styles.formInput}
-                value={formName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="Ex: Página iFood Pago"
-                autoFocus
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Slug (URL)</label>
-              <input
-                className={styles.formInput}
-                value={formSlug}
-                onChange={(e) => { setFormSlug(e.target.value); setFormError(''); }}
-                placeholder="pagina-ifood-pago"
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Vertical</label>
-              <select
-                className={styles.formSelect}
-                value={formVerticalId}
-                onChange={(e) => setFormVerticalId(e.target.value)}
-              >
-                <option value="">Ecossistema (sem vertical)</option>
-                {verticals.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {formError && <p className={styles.formError}>{formError}</p>}
-
-            <div className={styles.modalActions}>
-              <button className={styles.btnCancel} onClick={() => setShowCreateModal(false)}>Cancelar</button>
-              <button className={styles.btnSubmit} onClick={handleCreate} disabled={formLoading}>
-                {formLoading ? 'Criando...' : 'Criar página'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Nova Página"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleCreate} disabled={formLoading}>
+              {formLoading ? 'Criando...' : 'Criar página'}
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Nome da página</label>
+          <input
+            className={styles.formInput}
+            value={formName}
+            onChange={(e) => handleNameChange(e.target.value)}
+            placeholder="Ex: Página iFood Pago"
+            autoFocus
+          />
         </div>
-      )}
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Slug (URL)</label>
+          <input
+            className={styles.formInput}
+            value={formSlug}
+            onChange={(e) => { setFormSlug(e.target.value); setFormError(''); }}
+            placeholder="pagina-ifood-pago"
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Vertical</label>
+          <select
+            className={styles.formSelect}
+            value={formVerticalId}
+            onChange={(e) => setFormVerticalId(e.target.value)}
+          >
+            <option value="">Ecossistema (sem vertical)</option>
+            {verticals.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+        </div>
+        {formError && <p className={styles.formError}>{formError}</p>}
+      </Modal>
 
       {/* Duplicate Modal */}
-      {showDuplicateModal && selectedPage && (
-        <div className={styles.modalOverlay} onClick={() => setShowDuplicateModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>Duplicar Página</h2>
-            <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-              Duplicando <strong>{selectedPage.name}</strong>
-            </p>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Nome da cópia</label>
-              <input
-                className={styles.formInput}
-                value={formName}
-                onChange={(e) => handleNameChange(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Slug (URL)</label>
-              <input
-                className={styles.formInput}
-                value={formSlug}
-                onChange={(e) => { setFormSlug(e.target.value); setFormError(''); }}
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Vertical</label>
-              <select
-                className={styles.formSelect}
-                value={formVerticalId}
-                onChange={(e) => setFormVerticalId(e.target.value)}
-              >
-                <option value="">Ecossistema (sem vertical)</option>
-                {verticals.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {formError && <p className={styles.formError}>{formError}</p>}
-
-            <div className={styles.modalActions}>
-              <button className={styles.btnCancel} onClick={() => setShowDuplicateModal(false)}>Cancelar</button>
-              <button className={styles.btnSubmit} onClick={handleDuplicate} disabled={formLoading}>
-                {formLoading ? 'Duplicando...' : 'Duplicar'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        title="Duplicar Página"
+        description={selectedPage ? `Duplicando ${selectedPage.name}` : ''}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowDuplicateModal(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleDuplicate} disabled={formLoading}>
+              {formLoading ? 'Duplicando...' : 'Duplicar'}
+            </Button>
+          </>
+        }
+      >
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Nome da cópia</label>
+          <input
+            className={styles.formInput}
+            value={formName}
+            onChange={(e) => handleNameChange(e.target.value)}
+            autoFocus
+          />
         </div>
-      )}
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Slug (URL)</label>
+          <input
+            className={styles.formInput}
+            value={formSlug}
+            onChange={(e) => { setFormSlug(e.target.value); setFormError(''); }}
+          />
+        </div>
+        <div className={styles.formGroup}>
+          <label className={styles.formLabel}>Vertical</label>
+          <select
+            className={styles.formSelect}
+            value={formVerticalId}
+            onChange={(e) => setFormVerticalId(e.target.value)}
+          >
+            <option value="">Ecossistema (sem vertical)</option>
+            {verticals.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+        </div>
+        {formError && <p className={styles.formError}>{formError}</p>}
+      </Modal>
 
       {/* Delete Confirm */}
-      {showDeleteConfirm && selectedPage && (
-        <div className={styles.modalOverlay} onClick={() => setShowDeleteConfirm(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <h2>Deletar Página</h2>
-            <p style={{ marginBottom: '20px', color: 'var(--text-secondary)' }}>
-              Tem certeza que deseja deletar <strong>{selectedPage.name}</strong>? Essa ação não pode ser desfeita.
-            </p>
-            <div className={styles.modalActions}>
-              <button className={styles.btnCancel} onClick={() => setShowDeleteConfirm(false)}>Cancelar</button>
-              <button
-                className={styles.btnSmallDanger}
-                onClick={handleDelete}
-                disabled={formLoading}
-                style={{ padding: '10px 20px', height: '44px' }}
-              >
-                {formLoading ? 'Deletando...' : 'Deletar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Deletar Página"
+        description={selectedPage ? `Tem certeza que deseja deletar ${selectedPage.name}? Essa ação não pode ser desfeita.` : ''}
+        variant="danger"
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>Cancelar</Button>
+            <Button variant="danger" onClick={handleDelete} disabled={formLoading}>
+              {formLoading ? 'Deletando...' : 'Deletar'}
+            </Button>
+          </>
+        }
+      />
 
       {/* Toast */}
-      {toast && (
-        <div className={`${styles.toast} ${toast.type === 'success' ? styles.toastSuccess : styles.toastError}`}>
-          {toast.message}
-        </div>
-      )}
+      <Toast toast={toast} />
     </div>
   );
 }
