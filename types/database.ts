@@ -4,6 +4,7 @@
 
 export type PageStatus = 'draft' | 'published';
 export type VersionType = 'draft' | 'published';
+export type UserRole = 'admin' | 'editor' | 'viewer';
 
 // =============================================
 // Table row types
@@ -260,6 +261,32 @@ export interface FooterLink {
 export type FooterBlock = BaseBlock<'footer', FooterData>;
 
 // =============================================
+// User Management (RBAC)
+// =============================================
+
+export interface CmsUser {
+  id: string;
+  auth_id: string;
+  email: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserVertical {
+  id: string;
+  user_id: string;
+  vertical_id: string;
+  created_at: string;
+}
+
+export interface CmsUserWithVerticals extends CmsUser {
+  verticals: Vertical[];
+}
+
+// =============================================
 // A/B Testing
 // =============================================
 
@@ -351,6 +378,23 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Omit<ExperimentVariant, 'id' | 'created_at'>>;
+      };
+      cms_users: {
+        Row: CmsUser;
+        Insert: Omit<CmsUser, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<CmsUser, 'id' | 'created_at'>>;
+      };
+      user_verticals: {
+        Row: UserVertical;
+        Insert: Omit<UserVertical, 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<UserVertical, 'id' | 'created_at'>>;
       };
     };
   };
