@@ -14,6 +14,7 @@ import cardStyles from '@/components/PageCard/PageCard.module.css';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Toast } from '@/components/ui/toast';
+import { FilterDropdown } from '@/components/ui/filter-dropdown';
 import { useToast } from '@/hooks/useToast';
 import type { Page, Vertical } from '@/types/database';
 import styles from './pages.module.css';
@@ -408,26 +409,26 @@ export default function PagesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <select
-              className={styles.filterSelect}
+            <FilterDropdown
               value={verticalFilter}
-              onChange={(e) => setVerticalFilter(e.target.value)}
-            >
-              <option value="">Todas as verticais</option>
-              <option value="__none__">Ecossistema</option>
-              {verticals.map((v) => (
-                <option key={v.id} value={v.id}>{v.name}</option>
-              ))}
-            </select>
-            <select
-              className={styles.filterSelect}
+              onChange={setVerticalFilter}
+              placeholder="Todas as verticais"
+              options={[
+                { value: '', label: 'Todas as verticais' },
+                { value: '__none__', label: 'Ecossistema' },
+                ...verticals.map((v) => ({ value: v.id, label: v.name })),
+              ]}
+            />
+            <FilterDropdown
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">Todos os status</option>
-              <option value="published">Publicada</option>
-              <option value="draft">Rascunho</option>
-            </select>
+              onChange={setStatusFilter}
+              placeholder="Todos os status"
+              options={[
+                { value: '', label: 'Todos os status' },
+                { value: 'published', label: 'Publicada' },
+                { value: 'draft', label: 'Rascunho' },
+              ]}
+            />
           </div>
         )}
 
