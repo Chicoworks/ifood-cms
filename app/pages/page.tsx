@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/components/AuthProvider';
+import { useRole } from '@/hooks/useRole';
 import { Sidebar } from '@/components/Sidebar/Sidebar';
 import { Icon } from '@/components/Icon/Icon';
 import { PageCard } from '@/components/PageCard/PageCard';
@@ -22,6 +23,7 @@ type PageWithVertical = Page & { vertical?: Vertical | null };
 export default function PagesPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { canEdit } = useRole();
 
   const [pages, setPages] = useState<PageWithVertical[]>([]);
   const [verticals, setVerticals] = useState<Vertical[]>([]);
@@ -388,10 +390,12 @@ export default function PagesPage() {
               {filteredPages.length !== pages.length && ` · ${filteredPages.length} exibida${filteredPages.length !== 1 ? 's' : ''}`}
             </p>
           </div>
-          <Button variant="primary" onClick={() => { resetForm(); setShowCreateModal(true); }}>
-            <Icon name="plus-default" size={16} />
-            Nova página
-          </Button>
+          {canEdit && (
+            <Button variant="primary" onClick={() => { resetForm(); setShowCreateModal(true); }}>
+              <Icon name="plus-default" size={16} />
+              Nova página
+            </Button>
+          )}
         </div>
 
         {/* Toolbar */}
@@ -450,8 +454,8 @@ export default function PagesPage() {
                 userAvatar={userAvatar}
                 formatDate={formatDate}
                 onClick={() => router.push(`/editor/${page.id}`)}
-                onStatusChange={(newStatus) => handleStatusChange(page, newStatus)}
-                actions={
+                onStatusChange={canEdit ? (newStatus) => handleStatusChange(page, newStatus) : undefined}
+                actions={canEdit ? (
                   <>
                     <button className={cardStyles.btnAction} onClick={() => router.push(`/editor/${page.id}`)}>
                       Editar
@@ -463,7 +467,7 @@ export default function PagesPage() {
                       Remover
                     </button>
                   </>
-                }
+                ) : undefined}
               />
             ))}
           </div>

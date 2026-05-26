@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useRole } from '@/hooks/useRole';
 import type { Page, PageContent, Block, BlockType } from '@/types/database';
 import { BlockEditor } from './components/BlockEditor';
 import { BlockSelector } from './components/BlockSelector';
@@ -15,6 +16,7 @@ const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL || 'http://localhost:300
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
+  const { canEdit } = useRole();
   const pageId = params.id as string;
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -322,15 +324,24 @@ export default function EditorPage() {
           </div>
         </div>
         <div className={styles.topBarRight}>
-          <span className={styles.saveStatus}>
-            {saving ? 'Salvando...' : saved ? 'Salvo' : 'Alterações não salvas'}
-          </span>
-          <button className={styles.btnOutline} onClick={() => saveDraft(blocks)} disabled={saving || saved}>
-            Salvar rascunho
-          </button>
-          <button className={styles.btnPublish} onClick={handlePublish} disabled={saving}>
-            Publicar
-          </button>
+          {canEdit ? (
+            <>
+              <span className={styles.saveStatus}>
+                {saving ? 'Salvando...' : saved ? 'Salvo' : 'Alterações não salvas'}
+              </span>
+              <button className={styles.btnOutline} onClick={() => saveDraft(blocks)} disabled={saving || saved}>
+                Salvar rascunho
+              </button>
+              <button className={styles.btnPublish} onClick={handlePublish} disabled={saving}>
+                Publicar
+              </button>
+            </>
+          ) : (
+            <span className={styles.readOnlyBadge}>
+              <Icon name="eye-on" size={14} />
+              Modo leitura
+            </span>
+          )}
         </div>
       </header>
 
@@ -360,79 +371,83 @@ export default function EditorPage() {
 
           {!panelCollapsed && (
             <div className={styles.panelContent}>
-              {/* AI Adaptation Config */}
-              <div className={styles.aiSection}>
-                <button
-                  className={styles.aiSectionToggle}
-                  onClick={() => setShowAiPanel(!showAiPanel)}
-                >
-                  <Icon name="bot" size={16} />
-                  <span>Personalização com IA</span>
-                  <span className={`${styles.aiStatusDot} ${aiEnabled ? styles.aiStatusActive : ''}`} />
-                  <span style={{ marginLeft: 'auto', transform: showAiPanel ? 'rotate(180deg)' : 'none', transition: 'transform 150ms', display: 'inline-flex' }}>
-                    <Icon name="chevron-down" size={12} />
-                  </span>
-                </button>
+              {/* AI Adaptation Config — only for editors */}
+              {canEdit && (
+                <div className={styles.aiSection}>
+                  <button
+                    className={styles.aiSectionToggle}
+                    onClick={() => setShowAiPanel(!showAiPanel)}
+                  >
+                    <Icon name="bot" size={16} />
+                    <span>Personalização com IA</span>
+                    <span className={`${styles.aiStatusDot} ${aiEnabled ? styles.aiStatusActive : ''}`} />
+                    <span style={{ marginLeft: 'auto', transform: showAiPanel ? 'rotate(180deg)' : 'none', transition: 'transform 150ms', display: 'inline-flex' }}>
+                      <Icon name="chevron-down" size={12} />
+                    </span>
+                  </button>
 
-                {showAiPanel && (
-                  <div className={styles.aiPanelBody}>
-                    <label className={styles.aiToggleRow}>
-                      <span className={styles.aiToggleLabel}>Adaptar conteúdo por UTM</span>
-                      <button
-                        className={`${styles.aiToggleSwitch} ${aiEnabled ? styles.aiToggleSwitchOn : ''}`}
-                        onClick={() => setAiEnabled(!aiEnabled)}
-                        role="switch"
-                        aria-checked={aiEnabled}
-                      >
-                        <span className={styles.aiToggleKnob} />
-                      </button>
-                    </label>
+                  {showAiPanel && (
+                    <div className={styles.aiPanelBody}>
+                      <label className={styles.aiToggleRow}>
+                        <span className={styles.aiToggleLabel}>Adaptar conteúdo por UTM</span>
+                        <button
+                          className={`${styles.aiToggleSwitch} ${aiEnabled ? styles.aiToggleSwitchOn : ''}`}
+                          onClick={() => setAiEnabled(!aiEnabled)}
+                          role="switch"
+                          aria-checked={aiEnabled}
+                        >
+                          <span className={styles.aiToggleKnob} />
+                        </button>
+                      </label>
 
-                    {aiEnabled && (
-                      <>
-                        <div className={styles.aiPromptGroup}>
-                          <label className={styles.aiPromptLabel}>Instruções para a IA (opcional)</label>
-                          <textarea
-                            className={styles.aiPromptInput}
-                            value={aiPrompt}
-                            onChange={(e) => setAiPrompt(e.target.value)}
-                            placeholder="Ex: Adapte o tom para ser mais informal quando a campanha for de redes sociais. Destaque benefícios financeiros para campanhas de Google Ads."
-                            rows={4}
-                          />
-                          <span className={styles.aiPromptHint}>
-                            A IA usará os UTM params (source, campaign, medium) para adaptar textos automaticamente.
-                          </span>
-                        </div>
+                      {aiEnabled && (
+                        <>
+                          <div className={styles.aiPromptGroup}>
+                            <label className={styles.aiPromptLabel}>Instruções para a IA (opcional)</label>
+                            <textarea
+                              className={styles.aiPromptInput}
+                              value={aiPrompt}
+                              onChange={(e) => setAiPrompt(e.target.value)}
+                              placeholder="Ex: Adapte o tom para ser mais informal quando a campanha for de redes sociais. Destaque benefícios financeiros para campanhas de Google Ads."
+                              rows={4}
+                            />
+                            <span className={styles.aiPromptHint}>
+                              A IA usará os UTM params (source, campaign, medium) para adaptar textos automaticamente.
+                            </span>
+                          </div>
 
+                          <button
+                            className={styles.aiSaveBtn}
+                            onClick={saveAiConfig}
+                            disabled={aiSaving}
+                          >
+                            {aiSaving ? 'Salvando...' : 'Salvar configuração'}
+                          </button>
+                        </>
+                      )}
+
+                      {!aiEnabled && (
                         <button
                           className={styles.aiSaveBtn}
                           onClick={saveAiConfig}
                           disabled={aiSaving}
                         >
-                          {aiSaving ? 'Salvando...' : 'Salvar configuração'}
+                          {aiSaving ? 'Salvando...' : 'Salvar'}
                         </button>
-                      </>
-                    )}
-
-                    {!aiEnabled && (
-                      <button
-                        className={styles.aiSaveBtn}
-                        onClick={saveAiConfig}
-                        disabled={aiSaving}
-                      >
-                        {aiSaving ? 'Salvando...' : 'Salvar'}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {blocks.length === 0 ? (
                 <div className={styles.emptyEditor}>
                   <p>Nenhum bloco</p>
-                  <button className={styles.addBlockBtn} onClick={() => openBlockSelector()}>
-                    + Adicionar
-                  </button>
+                  {canEdit && (
+                    <button className={styles.addBlockBtn} onClick={() => openBlockSelector()}>
+                      + Adicionar
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -447,23 +462,25 @@ export default function EditorPage() {
                           setSelectedBlockId(block.id);
                           sendToIframe('cms:select-block', { blockId: block.id });
                         }}
-                        onUpdate={(updated) => updateBlock(index, updated)}
-                        onRemove={() => removeBlock(index)}
-                        onMove={(dir) => moveBlock(index, dir)}
-                        onDuplicate={() => duplicateBlock(index)}
+                        onUpdate={canEdit ? (updated) => updateBlock(index, updated) : undefined}
+                        onRemove={canEdit ? () => removeBlock(index) : undefined}
+                        onMove={canEdit ? (dir) => moveBlock(index, dir) : undefined}
+                        onDuplicate={canEdit ? () => duplicateBlock(index) : undefined}
                         isDragging={dragIndex === index}
                         isDragOver={dragOverIndex === index}
-                        onDragStart={() => handleDragStart(index)}
-                        onDragEnd={handleDragEnd}
-                        onDragOver={(e) => handleDragOver(e, index)}
-                        onDrop={() => handleDrop(index)}
+                        onDragStart={canEdit ? () => handleDragStart(index) : undefined}
+                        onDragEnd={canEdit ? handleDragEnd : undefined}
+                        onDragOver={canEdit ? (e) => handleDragOver(e, index) : undefined}
+                        onDrop={canEdit ? () => handleDrop(index) : undefined}
                       />
                     </div>
                   ))}
 
-                  <button className={styles.addBlockBtn} onClick={() => openBlockSelector()}>
-                    + Adicionar bloco
-                  </button>
+                  {canEdit && (
+                    <button className={styles.addBlockBtn} onClick={() => openBlockSelector()}>
+                      + Adicionar bloco
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -472,7 +489,7 @@ export default function EditorPage() {
       </div>
 
       {/* Block selector modal */}
-      {showBlockSelector && (
+      {canEdit && showBlockSelector && (
         <BlockSelector
           onSelect={addBlock}
           onClose={() => { setShowBlockSelector(false); setInsertIndex(-1); }}
