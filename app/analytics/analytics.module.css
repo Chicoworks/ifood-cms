@@ -289,7 +289,7 @@
 
 .funnelBar {
   height: 28px;
-  background: linear-gradient(90deg, var(--brand), #ff4466);
+  background: linear-gradient(90deg, var(--brand), var(--brand-hover));
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
