@@ -320,6 +320,30 @@ export interface ExperimentVariant {
 }
 
 // =============================================
+// Heatmap Tracking
+// =============================================
+
+export type EventType = 'click' | 'scroll';
+
+export interface PageEvent {
+  id: string;
+  page_id: string;
+  event_type: EventType;
+  x_pct: number | null;
+  y_pct: number | null;
+  element_tag: string | null;
+  element_text: string | null;
+  scroll_depth_pct: number | null;
+  viewport_width: number | null;
+  device_type: string | null;
+  session_id: string | null;
+  page_slug: string | null;
+  experiment_id: string | null;
+  variant_id: string | null;
+  created_at: string;
+}
+
+// =============================================
 // Supabase generated types interface
 // =============================================
 
@@ -395,6 +419,14 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Omit<UserVertical, 'id' | 'created_at'>>;
+      };
+      page_events: {
+        Row: PageEvent;
+        Insert: Omit<PageEvent, 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<PageEvent, 'id' | 'created_at'>>;
       };
     };
   };
