@@ -18,7 +18,7 @@ export default function AuthCallback() {
       isProcessing = true;
 
       const hash = window.location.hash;
-      if (\!hash) {
+      if (!hash) {
         router.replace('/login');
         return;
       }
@@ -27,7 +27,7 @@ export default function AuthCallback() {
       const accessToken = params.get('access_token');
       const refreshToken = params.get('refresh_token');
 
-      if (\!accessToken || \!refreshToken) {
+      if (!accessToken || \!refreshToken) {
         router.replace('/login');
         return;
       }
@@ -70,7 +70,7 @@ export default function AuthCallback() {
         });
 
         setTimeout(async () => {
-          if (\!sessionSet) {
+          if (!sessionSet) {
             const { data } = await supabase.auth.getUser();
             if (data.user) {
               sessionSet = true;
