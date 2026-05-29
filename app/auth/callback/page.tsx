@@ -11,84 +11,49 @@ export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
-    let isProcessing = false;
-
     const handleCallback = async () => {
-      if (isProcessing) return;
-      isProcessing = true;
+      console.log('[Callback] Starting');
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      const hash = window.location.hash;
-      if (!hash) {
+      console.log('[Callback] getSession:', !!session, error);
+
+      if (error || !session) {
+        console.log('[Callback] No session, redirecting');
         router.replace('/login');
         return;
       }
 
-      const params = new URLSearchParams(hash.substring(1));
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
+      const email = session.user.email || '';
+      const domain = email.split('@')[1];
 
-      if (!accessToken || \!refreshToken) {
-        router.replace('/login');
+      console.log('[Callback] Domain:', domain);
+
+      if (domain !== ALLOWED_DOMAIN) {
+        console.log('[Callback] Domain not allowed');
+        await supabase.auth.signOut();
+        router.replace('/login?error=domain');
         return;
       }
 
+      console.log('[Callback] Domain OK, syncing profile');
+      const u = session.user;
       try {
-        let sessionSet = false;
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (event === 'SIGNED_IN' && session && \!sessionSet) {
-            sessionSet = true;
-            subscription.unsubscribe();
-
-            const email = session.user.email || '';
-            const domain = email.split('@')[1];
-
-            if (domain \!== ALLOWED_DOMAIN) {
-              await supabase.auth.signOut();
-              router.replace('/login?error=domain');
-              return;
-            }
-
-            try {
-              await supabase.from('cms_users').upsert({
-                auth_id: session.user.id,
-                email: session.user.email || '',
-                full_name: session.user.user_metadata?.full_name || '',
-                avatar_url: session.user.user_metadata?.avatar_url || '',
-              }, { onConflict: 'auth_id' });
-            } catch (err) {
-              console.error('[Callback] upsert error:', err);
-            }
-
-            router.replace('/');
-          }
-        });
-
-        await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        setTimeout(async () => {
-          if (!sessionSet) {
-            const { data } = await supabase.auth.getUser();
-            if (data.user) {
-              sessionSet = true;
-              subscription.unsubscribe();
-              router.replace('/');
-            } else {
-              subscription.unsubscribe();
-              router.replace('/login');
-            }
-          }
-        }, 8000);
+        await supabase.from('cms_users').upsert({
+          auth_id: u.id,
+          email: u.email || '',
+          full_name: u.user_metadata?.full_name || '',
+          avatar_url: u.user_metadata?.avatar_url || '',
+        }, { onConflict: 'auth_id' });
+        console.log('[Callback] Profile synced');
       } catch (err) {
-        console.error('[Callback] Error:', err);
-        router.replace('/login');
+        console.error('[Callback] Upsert error:', err);
       }
+
+      console.log('[Callback] Redirecting to /');
+      router.replace('/');
     };
 
-    setTimeout(handleCallback, 100);
+    handleCallback();
   }, [router]);
 
   return (
