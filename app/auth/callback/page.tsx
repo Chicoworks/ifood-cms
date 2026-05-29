@@ -11,7 +11,11 @@ export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('[Callback] mounted, URL hash:', window.location.hash.substring(0, 50));
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('[Callback] event:', _event, '| user:', session?.user?.email ?? 'none');
+
       if (_event === 'SIGNED_IN' && session) {
         const email = session.user.email || '';
         const domain = email.split('@')[1];
@@ -36,11 +40,12 @@ export default function AuthCallback() {
 
         router.replace('/');
       }
-      // Ignore INITIAL_SESSION — OAuth redirect hasn't been processed yet
     });
 
-    // Fallback only if SIGNED_IN never fires
-    const timeout = setTimeout(() => router.replace('/login'), 15000);
+    const timeout = setTimeout(() => {
+      console.warn('[Callback] timeout - no SIGNED_IN event received');
+      router.replace('/login');
+    }, 15000);
 
     return () => {
       subscription.unsubscribe();
