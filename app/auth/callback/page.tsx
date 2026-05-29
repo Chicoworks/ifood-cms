@@ -11,36 +11,45 @@ export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
-    const handleCallback = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+    // Listen for the SIGNED_IN event that Supabase fires after OAuth redirect
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (_event === 'SIGNED_IN' && session) {
+        const email = session.user.email || '';
+        const domain = email.split('@')[1];
 
-      if (error || !session) {
+        if (domain !== ALLOWED_DOMAIN) {
+          await supabase.auth.signOut();
+          router.replace('/login?error=domain');
+          return;
+        }
+
+        // Sync cms_users profile
+        const u = session.user;
+        try {
+          await supabase.from('cms_users').upsert({
+            auth_id: u.id,
+            email: u.email || '',
+            full_name: u.user_metadata?.full_name || '',
+            avatar_url: u.user_metadata?.avatar_url || '',
+          }, { onConflict: 'auth_id' });
+        } catch (err) {
+          console.error('[Callback] upsert error:', err);
+        }
+
+        router.replace('/');
+      } else if (_event === 'INITIAL_SESSION' && !session) {
+        // No session found, go back to login
         router.replace('/login');
-        return;
       }
+    });
 
-      const email = session.user.email || '';
-      const domain = email.split('@')[1];
+    // Safety fallback
+    const timeout = setTimeout(() => router.replace('/login'), 10000);
 
-      if (domain !== ALLOWED_DOMAIN) {
-        await supabase.auth.signOut();
-        router.replace('/login?error=domain');
-        return;
-      }
-
-      // Ensure cms_users profile exists
-      const u = session.user;
-      await supabase.from('cms_users').upsert({
-        auth_id: u.id,
-        email: u.email || '',
-        full_name: u.user_metadata?.full_name || '',
-        avatar_url: u.user_metadata?.avatar_url || '',
-      }, { onConflict: 'auth_id' });
-
-      router.replace('/');
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
     };
-
-    handleCallback();
   }, [router]);
 
   return (
