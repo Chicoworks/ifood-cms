@@ -33,7 +33,6 @@ export default function AuthCallback() {
       }
 
       try {
-        // Use onAuthStateChange to listen for the session being set
         let sessionSet = false;
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -50,7 +49,6 @@ export default function AuthCallback() {
               return;
             }
 
-            // Sync cms_users profile
             try {
               await supabase.from('cms_users').upsert({
                 auth_id: session.user.id,
@@ -66,13 +64,11 @@ export default function AuthCallback() {
           }
         });
 
-        // Try to set the session manually
         await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
 
-        // Fallback: if nothing happens in 8 seconds, check the session directly
         setTimeout(async () => {
           if (\!sessionSet) {
             const { data } = await supabase.auth.getUser();
@@ -92,7 +88,6 @@ export default function AuthCallback() {
       }
     };
 
-    // Small delay to ensure hash is available
     setTimeout(handleCallback, 100);
   }, [router]);
 
