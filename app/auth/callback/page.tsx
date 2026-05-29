@@ -11,7 +11,6 @@ export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
-    // Listen for the SIGNED_IN event that Supabase fires after OAuth redirect
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (_event === 'SIGNED_IN' && session) {
         const email = session.user.email || '';
@@ -23,7 +22,6 @@ export default function AuthCallback() {
           return;
         }
 
-        // Sync cms_users profile
         const u = session.user;
         try {
           await supabase.from('cms_users').upsert({
@@ -37,14 +35,12 @@ export default function AuthCallback() {
         }
 
         router.replace('/');
-      } else if (_event === 'INITIAL_SESSION' && !session) {
-        // No session found, go back to login
-        router.replace('/login');
       }
+      // Ignore INITIAL_SESSION — OAuth redirect hasn't been processed yet
     });
 
-    // Safety fallback
-    const timeout = setTimeout(() => router.replace('/login'), 10000);
+    // Fallback only if SIGNED_IN never fires
+    const timeout = setTimeout(() => router.replace('/login'), 15000);
 
     return () => {
       subscription.unsubscribe();
