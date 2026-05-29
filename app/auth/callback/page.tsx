@@ -7,12 +7,16 @@ import { supabase } from '@/lib/supabase';
 
 const ALLOWED_DOMAIN = 'ifood.com.br';
 
+console.log('[Callback] Component file loaded');
+
 export default function AuthCallback() {
+  console.log('[Callback] Component rendering');
   const router = useRouter();
 
   useEffect(() => {
+    console.log('[Callback] useEffect mounted');
     const handleCallback = async () => {
-      console.log('[Callback] Starting...');
+      console.log('[Callback] handleCallback Starting...');
 
       const hash = window.location.hash;
       console.log('[Callback] Hash length:', hash.length);
